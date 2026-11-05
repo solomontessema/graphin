@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Graphin Save: settings</title>
+    <style>
+      body {
+        max-width: 520px;
+        margin: 40px auto;
+        padding: 0 16px;
+        font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+      select,
+      button {
+        font: inherit;
+        padding: 6px 10px;
+      }
+      .muted {
+        color: #6b7587;
+      }
+      .ok {
+        color: #2e7d32;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Graphin Save</h1>
+    <p class="muted">Choose where Graphin is running. Graphin must be started at this address for saving to work.</p>
+
+    <label>
+      Graphin address
+      <select id="address">
+        <option value="http://localhost:8100">http://localhost:8100 (built app or php server)</option>
+        <option value="http://localhost:5173">http://localhost:5173 (npm run dev)</option>
+        <option value="http://127.0.0.1:8765">http://127.0.0.1:8765 (Graphin desktop)</option>
+      </select>
+    </label>
+
+    <button id="save">Save settings</button>
+    <p id="message"></p>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

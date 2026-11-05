@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "The Graphin window may use the core Tauri features.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

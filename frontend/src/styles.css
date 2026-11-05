@@ -1,0 +1,1206 @@
+:root {
+  --bg: #0f1218;
+  --surface: #181d26;
+  --surface-2: #1f2633;
+  --border: #2a3343;
+  --text: #e6eaf2;
+  --muted: #8b95a7;
+  --accent: #6aa9ff;
+  --accent-ink: #0b1220;
+  --danger: #ff7b7b;
+  --edge: #6b7890;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #f5f6f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f6;
+    --border: #d5dbe6;
+    --text: #1a2030;
+    --muted: #5d6779;
+    --accent: #2563eb;
+    --accent-ink: #ffffff;
+    --danger: #c62828;
+    --edge: #8390a6;
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+a {
+  color: var(--accent);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+button {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+button.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button.small {
+  padding: 2px 8px;
+}
+
+button.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.readonly {
+  opacity: 0.7;
+}
+
+.type-badge {
+  display: inline-block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* ---------- Network list ---------- */
+
+.page {
+  max-width: 720px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+.page-header .tagline {
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.create-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.create-row input {
+  flex: 1;
+}
+
+.network-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.network-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--surface);
+}
+
+.network-list a {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: var(--text);
+  flex: 1;
+}
+
+.network-list a span {
+  font-size: 12px;
+}
+
+/* ---------- Board and toolbar ---------- */
+
+.board {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.toolbar h2 {
+  margin: 0;
+  font-size: 16px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar .back {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.toolbar .search {
+  width: 220px;
+}
+
+.toolbar .add-link {
+  flex: 1;
+  min-width: 220px;
+}
+
+.toolbar .add-link input {
+  width: 100%;
+}
+
+.banner {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.canvas-msg {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: var(--surface);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+
+/* React Flow colours follow the theme */
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-edge-stroke: var(--edge);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-minimap-background-color: var(--surface);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-color: var(--text);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-border-color: var(--border);
+}
+
+.react-flow__edge-text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--surface);
+}
+
+/* ---------- Graph node ---------- */
+
+.link-node {
+  position: relative;
+  width: 220px;
+  /* The background and frame come from the node's own style, when it has one (see utils.js). */
+  background: var(--node-fill, var(--surface));
+  border: var(--node-frame-w, 1px) solid var(--node-frame, var(--border));
+  /* Text contrasts with the background (see readableText in utils.js), unless the user chose a colour. */
+  color: var(--node-text, var(--text));
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.15s;
+}
+
+/* A linked tile's type badge is its link. Hovering it shows the page over the tile, large enough to read. */
+.page-badge {
+  display: inline-block;
+}
+
+/* The tile with a page showing is lifted above the other tiles, so the page is in front of them. */
+.react-flow__node:has(.page-window) {
+  z-index: 1000 !important;
+}
+
+/* The overview map sits behind the canvas, so page windows and tiles are never covered by it. */
+.react-flow__panel.react-flow__minimap {
+  z-index: -1;
+}
+
+.type-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.type-link:hover {
+  text-decoration: underline;
+}
+
+/* The page window: a panel in front of the tile, offset so it covers part of the tile and shows which tile it is. */
+.page-window {
+  position: absolute;
+  top: 40px;
+  left: 64px;
+  z-index: 50;
+  width: 560px;
+  max-width: 80vw;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.page-window-bar {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-window-frame {
+  display: block;
+  width: 100%;
+  height: 420px;
+  max-height: 70vh;
+  border: 0;
+}
+
+.page-window-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.link-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.link-node.dim {
+  opacity: 0.3;
+}
+
+.link-node.compact {
+  width: auto;
+  min-width: 120px;
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.link-node.compact .node-title {
+  font-size: 15px;
+  white-space: normal;
+}
+
+.node-thumb {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 6px;
+  background: var(--surface-2);
+}
+
+.node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.node-favicon {
+  width: 14px;
+  height: 14px;
+}
+
+.node-title {
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.node-commentary {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+/* An image or video tile: the picture fills the top of the tile, the title and commentary sit below it. */
+.thumb-media {
+  margin: -8px -8px 8px;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
+  background: var(--surface-2);
+}
+
+.thumb-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-placeholder {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Connection points are invisible but still take the pointer. They show while a connection is being dragged. */
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* A selected item shows its own points, so an arrow can start from it. While an arrow is being drawn, every item shows its points. */
+.react-flow__node.selected .react-flow__handle,
+.board.connecting .react-flow__handle.connectionindicator,
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto {
+  opacity: 1;
+}
+
+/* ---------- Node card: preview and details beside a node ---------- */
+
+.node-card {
+  position: fixed;
+  z-index: 60;
+  width: 380px;
+  max-height: min(460px, calc(100vh - 16px));
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.card-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.card-actions a {
+  font-size: 13px;
+}
+
+.card-body {
+  padding: 12px;
+}
+
+.preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.preview-image {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.frame-hint {
+  font-size: 12px;
+  margin: 0;
+}
+
+/* The website link in the card. Hovering it reveals the page below the link. */
+.web-reveal {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.web-link {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.web-link:hover {
+  text-decoration: underline;
+}
+
+.web-reveal .preview-frame {
+  margin-bottom: 6px;
+}
+
+.web-reveal .frame-hint {
+  margin-bottom: 8px;
+}
+
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.details-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.details-form input,
+.details-form textarea,
+.details-form select {
+  width: 100%;
+  color: var(--text);
+}
+
+.details-form textarea {
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-row.end {
+  justify-content: flex-end;
+}
+
+.card-body h3 {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.relation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.relation-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.relation-text {
+  min-width: 0;
+}
+
+/* ---------- Dialogs ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dialog label input,
+.dialog label textarea {
+  color: var(--text);
+}
+
+.dialog fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialog .radio {
+  flex-direction: row;
+  align-items: center;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.dialog p {
+  margin: 0;
+}
+
+.relation-pair {
+  color: var(--muted);
+}
+
+.bookmarklet-row {
+  text-align: center;
+}
+
+.bookmarklet {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-decoration: none;
+  font-weight: 600;
+  cursor: grab;
+}
+
+/* ---------- Capture window ---------- */
+
+.capture {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.capture-thumb {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+/* Narrow screens: the panel takes the full width, and the toolbar wraps. */
+@media (max-width: 760px) {
+  .node-card {
+    width: calc(100vw - 16px);
+  }
+  .toolbar .search {
+    width: 100%;
+  }
+}
+
+/* ---------- Groups: a large box that holds its members ---------- */
+
+/* The React Flow wrapper keeps no frame of its own; the box below draws the group. */
+.react-flow__node-group,
+.react-flow__node[data-type='group'] {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  /* The whole frame can be grabbed; tiles on top of it take the pointer first. */
+  pointer-events: all;
+}
+
+.group-box {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: var(--group-frame-w, 2px) dashed var(--group-frame, var(--accent));
+  border-radius: 14px;
+  background: var(--group-bg, color-mix(in srgb, var(--accent) 7%, transparent));
+}
+
+.group-title {
+  pointer-events: auto;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px 12px 0 0;
+  background: transparent;
+  border-bottom: 1px dashed var(--accent);
+  font-size: 16px;
+}
+
+.group-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-box .react-flow__handle {
+  opacity: 0;
+}
+
+/* ---------- Group shapes: rectangle or circle, resized from the edge or the radius ---------- */
+
+/* Resize handles sit inside a group, which otherwise ignores the pointer (see above). */
+.react-flow__node-group .react-flow__resize-control {
+  pointer-events: all;
+}
+
+.group-box.shape-circle,
+.group-box.shape-ellipse {
+  border-radius: 50%;
+}
+
+/* On a circle the title is a pill near the top, so the members have the whole disc below it. */
+.group-box.shape-circle .group-title,
+.group-box.shape-ellipse .group-title {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56%;
+  height: auto;
+  min-height: 44px;
+  border-radius: 999px;
+  border-bottom: none;
+}
+
+.group-shape {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.group-shape:hover {
+  color: var(--accent);
+}
+
+/* The radius handle on a circle: drag it to make the circle smaller or larger. */
+/* A circle's edge: a band straddling the outline. Hovering it shows the band; dragging it changes the radius. */
+/* Only the stroke of the circle takes the pointer, so the inside of the circle still moves it. */
+.group-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.group-ring circle {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  pointer-events: stroke;
+  cursor: ew-resize;
+  transition: stroke 0.15s;
+}
+
+.group-ring circle:hover {
+  stroke: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.group-radius {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  cursor: ew-resize;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+/* ---------- Appearance: the style editor and the link card ---------- */
+
+.style-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.style-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.style-row input[type='range'] {
+  width: 100%;
+}
+
+.style-value {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.swatch.is-on {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* "No colour": a white disc with a red slash, so it reads as empty. */
+.swatch.none {
+  background: linear-gradient(135deg, transparent 45%, var(--danger) 45%, var(--danger) 55%, transparent 55%), var(--surface);
+}
+
+.colour-well {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.edge-card {
+  position: fixed;
+  z-index: 70;
+  width: 320px;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+}
+
+.edge-card .card-title strong {
+  font-weight: 600;
+}
+
+/* ---------- Text colour, the right-hand toolbar, and place-and-time fields ---------- */
+
+.link-node .node-commentary {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.group-title {
+  color: var(--group-text, var(--text));
+}
+
+/* Placing a new item from the right-hand toolbar: the canvas shows a crosshair and a short hint. */
+.board.placing .react-flow__pane {
+  cursor: crosshair;
+}
+
+/* The tile that a click would place, shown under the pointer while placing. */
+.place-preview {
+  position: fixed;
+  z-index: 80;
+  width: 230px;
+  padding: 8px;
+  background: var(--surface);
+  border: 2px dashed var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  opacity: 0.8;
+  pointer-events: none;
+  transform-origin: 0 0;
+  font-size: 14px;
+}
+
+.place-preview-title {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.placing-hint {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+}
+
+/* While Match is active, the pointer is the same drop symbol as the toolbar button, with its tip as the point. */
+.board.painting,
+.board.painting .react-flow__node,
+.board.painting .react-flow__pane,
+.board.painting .react-flow__edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z'/%3E%3C/svg%3E") 12 3, copy;
+}
+
+/* A toolbar button that shows only a symbol. */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The Layout menu in the toolbar: one entry per layout, with a line on what it does. */
+.layout-menu {
+  position: relative;
+  z-index: 20;
+}
+
+.layout-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  width: 280px;
+  margin: 6px 0 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.layout-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.layout-list button:hover {
+  background: var(--surface-2);
+}
+
+.layout-list span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.layout-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.layout-compact label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.layout-compact input {
+  flex: 1;
+}
+
+.layout-compact span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* The toolbar on the right edge of the canvas: one button per kind of item to add. */
+.right-toolbar {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.right-toolbar .rt-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.right-toolbar button {
+  width: 104px;
+  text-align: left;
+}
+
+.place-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.place-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.dialog .hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- Group shapes, and the edit and trash icons ---------- */
+
+.group-box {
+  pointer-events: auto;
+}
+
+.group-box.shape-rounded {
+  border-radius: 28px;
+}
+
+.group-box.shape-pill {
+  border-radius: 999px;
+}
+
+/* A circle is selected by its own outline, not by the square box around it that React Flow would draw. */
+.react-flow__node.selected:has(.group-box.shape-circle) {
+  box-shadow: none;
+  outline: none;
+}
+
+/* A circle's Edit and trash buttons sit centred on its top edge, above the resize band. */
+.group-box.shape-circle > .node-tools {
+  top: 0;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+/* The icons in the top-right corner of a tile or group. Faint until the item is hovered or selected. */
+.node-tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.group-box .node-tools {
+  top: 10px;
+  right: 10px;
+}
+
+.link-node:hover .node-tools,
+.link-node.selected .node-tools,
+.group-box:hover .node-tools,
+.react-flow__node.selected .node-tools,
+.node-tools:focus-within {
+  opacity: 1;
+}
+
+.node-tools button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.node-tools button:hover {
+  color: var(--accent);
+}
+
+.node-tools button:last-child:hover {
+  color: var(--danger);
+}
+
+.shape-pick select {
+  width: 100%;
+}

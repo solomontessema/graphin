@@ -1,0 +1,15 @@
+{
+  "name": "graphin-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Graphin for Windows: the same app, running on this computer with its own database.",
+  "scripts": {
+    "bundle": "node scripts/prepare-bundle.mjs",
+    "dev": "node scripts/prepare-bundle.mjs && tauri dev",
+    "build": "node scripts/prepare-bundle.mjs && tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
