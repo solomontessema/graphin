@@ -114,4 +114,8 @@ Graphin is a working project under active development. Not built yet:
 
 ## Licence
 
-No licence has been chosen yet, so all rights are reserved by the author for now.
+Copyright (C) 2026 Solomon Tessema.
+
+Graphin is free software, released under the [GNU Affero General Public License](LICENSE), version 3 or (at your option) any later version. You may use, study, change and share it. If you run a modified version as a service that other people use over a network, you must make your modified source code available to those users under the same licence.
+
+The Graphin name and the graphin.org site are not covered by the licence.

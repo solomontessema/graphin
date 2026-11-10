@@ -2,7 +2,7 @@
     "name": "graphin/graphin",
     "description": "Graphin: a visual network for research, ideas, and knowledge",
     "type": "project",
-    "license": "proprietary",
+    "license": "AGPL-3.0-or-later",
     "require": {
         "php": ">=8.0",
         "slim/slim": "^4.12",
