@@ -11,6 +11,10 @@ function readNetworkId() {
   return match ? match[1] : null;
 }
 
+// The bookmarklet opens the capture form in a small window: at /capture on its own server, or as index.html?capture=1
+// in a subfolder of shared hosting, where /capture would not reach the app.
+const isCapturePage = () => window.location.pathname === '/capture' || new URLSearchParams(window.location.search).get('capture') === '1';
+
 export default function App() {
   const [networkId, setNetworkId] = useState(readNetworkId);
   // Who is signed in: null while we ask the server, then { mode, user }. mode "local" means no accounts (the desktop app).
@@ -44,13 +48,13 @@ export default function App() {
   }
   if (auth.mode === 'accounts' && !auth.user) {
     // The bookmarklet window has no room for a landing page: it asks to sign in first.
-    if (window.location.pathname === '/capture') {
+    if (isCapturePage()) {
       return (
         <main className="page">
           <h1>Graphin</h1>
           <p>Log in to Graphin in your main window first, then use the bookmarklet again.</p>
           <p>
-            <a href="/">Open Graphin</a>
+            <a href="./">Open Graphin</a>
           </p>
         </main>
       );
@@ -59,7 +63,7 @@ export default function App() {
   }
 
   // The bookmarklet opens /capture in a small window. It is a separate page, not a canvas view.
-  if (window.location.pathname === '/capture') {
+  if (isCapturePage()) {
     return <CapturePage />;
   }
   if (networkId) {

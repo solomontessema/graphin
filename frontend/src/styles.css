@@ -1741,3 +1741,28 @@ button.on {
 .page.page-wide { max-width: 1200px; }
 @media (max-width: 900px) { .network-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .network-tiles { grid-template-columns: 1fr; } }
+
+/* ---------- "Create New" placeholder tile and its window ---------- */
+.network-new { display: flex; }
+.network-new button {
+  flex: 1;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--muted);
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.network-new button:hover, .network-new button:focus-visible { border-color: #2563eb; color: #2563eb; background: rgba(37, 99, 235, 0.06); }
+.network-new .plus { font-size: 44px; line-height: 1; font-weight: 300; }
+.new-network-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+.new-network-dialog .tile-edit { border-top: none; padding-top: 0; }
+.new-network-dialog .tile-edit .field { gap: 6px; font-size: 13px; }

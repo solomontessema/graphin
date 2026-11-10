@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
+import appShot from '../assets/landing-app.jpg';
 
 const FEATURES = [
   {
@@ -183,7 +184,7 @@ export default function Landing({ onAuth }) {
       <section className="landing-showcase">
         <div className="showcase-shot">
           <div className="shot-bar"><i /><i /><i /></div>
-          <img src="/landing-app.jpg" alt="A Graphin graph about human evolution and migration: colour-coded tiles joined by labelled links" loading="lazy" />
+          <img src={appShot} alt="A Graphin graph about human evolution and migration: colour-coded tiles joined by labelled links" loading="lazy" />
         </div>
       </section>
 

@@ -1,4 +1,6 @@
-const BASE = '/api';
+// Where the API is. On its own server it is /api; in a subfolder of shared hosting the build sets a relative address
+// (see .env.ionos).
+const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 /** Sends a JSON request. Returns the parsed body, or null for 204 responses. Throws with the server's message. */
 async function request(method, path, body) {

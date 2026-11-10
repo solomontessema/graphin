@@ -8,9 +8,52 @@ function readableOn(hex) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#111827' : '#ffffff';
 }
 
+
+/** The picture and background colour choices of a tile. Used by the edit form and the "Create New" window. */
+function TileFields({ draft, setDraft }) {
+  return (
+    <>
+      <div className="field">
+        <span>Picture</span>
+        <div className="cover-choices">
+          {COVERS.map((cover) => (
+            <button
+              key={cover.url}
+              type="button"
+              className={`cover-choice${(draft.cover || DEFAULT_COVER) === cover.url ? ' on' : ''}`}
+              onClick={() => setDraft({ ...draft, cover: cover.url === DEFAULT_COVER ? '' : cover.url })}
+              title={`${cover.name} (${cover.licence})`}
+            >
+              <img src={cover.url} alt={cover.name} loading="lazy" referrerPolicy="no-referrer" />
+            </button>
+          ))}
+        </div>
+        <input
+          value={draft.cover}
+          onChange={(e) => setDraft({ ...draft, cover: e.target.value })}
+          placeholder="Or paste a link to any image"
+          aria-label="Link to a picture"
+          maxLength={2000}
+        />
+      </div>
+      <div className="field color-field">
+        <span>Background colour</span>
+        <input type="color" value={draft.color || '#ffffff'} onChange={(e) => setDraft({ ...draft, color: e.target.value })} aria-label="Background colour" />
+        {draft.color && (
+          <button type="button" className="ghost" onClick={() => setDraft({ ...draft, color: '' })}>
+            Default
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function NetworkList({ user, onLogout }) {
   const [networks, setNetworks] = useState(null);
-  const [name, setName] = useState('');
+  // The "Create New" window: closed (null) or open with the values typed so far.
+  const [creating, setCreating] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // The network being edited, or null, and the values typed so far.
   const [editing, setEditing] = useState(null);
@@ -24,12 +67,20 @@ export default function NetworkList({ user, onLogout }) {
 
   async function create(event) {
     event.preventDefault();
-    if (!name.trim()) return;
+    const name = creating.name.trim();
+    if (!name) return;
+    setError('');
+    setBusy(true);
     try {
-      const network = await api.createNetwork(name.trim());
+      const network = await api.createNetwork(name);
+      // The picture and colour, if chosen, are saved the same way an edit saves them.
+      if (creating.cover.trim() || creating.color) {
+        await api.editNetwork(network.id, { name, cover_url: creating.cover.trim() || null, tile_color: creating.color || null });
+      }
       window.location.hash = `#/networks/${network.id}`;
     } catch (e) {
       setError(e.message);
+      setBusy(false);
     }
   }
 
@@ -87,22 +138,17 @@ export default function NetworkList({ user, onLogout }) {
         <p className="tagline">A visual network for research, ideas, and knowledge.</p>
       </header>
 
-      <form className="create-row" onSubmit={create}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New network, for example AI Career Network"
-          maxLength={255}
-        />
-        <button type="submit">Create network</button>
-      </form>
-
       {error && <p className="error">{error}</p>}
 
       {networks === null && <p className="muted">Loading…</p>}
-      {networks && networks.length === 0 && <p className="muted">No networks yet. Create one to start.</p>}
-      {networks && networks.length > 0 && (
+      {networks && (
         <ul className="network-tiles">
+          <li className="network-new">
+            <button type="button" onClick={() => setCreating({ name: '', cover: '', color: '' })}>
+              <span className="plus" aria-hidden="true">+</span>
+              <span>Create New</span>
+            </button>
+          </li>
           {networks.map((network) => (
             <li
               key={network.id}
@@ -148,38 +194,7 @@ export default function NetworkList({ user, onLogout }) {
                       Name
                       <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={255} autoFocus />
                     </label>
-                    <div className="field">
-                      <span>Picture</span>
-                      <div className="cover-choices">
-                        {COVERS.map((cover) => (
-                          <button
-                            key={cover.url}
-                            type="button"
-                            className={`cover-choice${(draft.cover || DEFAULT_COVER) === cover.url ? ' on' : ''}`}
-                            onClick={() => setDraft({ ...draft, cover: cover.url === DEFAULT_COVER ? '' : cover.url })}
-                            title={`${cover.name} (${cover.licence})`}
-                          >
-                            <img src={cover.url} alt={cover.name} loading="lazy" referrerPolicy="no-referrer" />
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        value={draft.cover}
-                        onChange={(e) => setDraft({ ...draft, cover: e.target.value })}
-                        placeholder="Or paste a link to any image"
-                        aria-label="Link to a picture"
-                        maxLength={2000}
-                      />
-                    </div>
-                    <div className="field color-field">
-                      <span>Background colour</span>
-                      <input type="color" value={draft.color || '#ffffff'} onChange={(e) => setDraft({ ...draft, color: e.target.value })} aria-label="Background colour" />
-                      {draft.color && (
-                        <button type="button" className="ghost" onClick={() => setDraft({ ...draft, color: '' })}>
-                          Default
-                        </button>
-                      )}
-                    </div>
+                    <TileFields draft={draft} setDraft={setDraft} />
                     <div className="tile-edit-buttons">
                       <button type="submit" disabled={!draft.name.trim()}>
                         Save
@@ -194,6 +209,41 @@ export default function NetworkList({ user, onLogout }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {creating && (
+        <div className="overlay" onMouseDown={() => !busy && setCreating(null)}>
+          <form
+            className="dialog new-network-dialog"
+            onMouseDown={(e) => e.stopPropagation()}
+            onSubmit={create}
+            onKeyDown={(e) => e.key === 'Escape' && !busy && setCreating(null)}
+          >
+            <h2>Create a new network</h2>
+            <label>
+              Name
+              <input
+                value={creating.name}
+                onChange={(e) => setCreating({ ...creating, name: e.target.value })}
+                placeholder="For example: AI Career Network"
+                maxLength={255}
+                autoFocus
+              />
+            </label>
+            <div className="tile-edit">
+              <TileFields draft={creating} setDraft={setCreating} />
+            </div>
+            {error && <p className="error">{error}</p>}
+            <div className="form-row end">
+              <button type="button" className="ghost" onClick={() => setCreating(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" disabled={busy || !creating.name.trim()}>
+                {busy ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </main>
   );

@@ -11,7 +11,11 @@ if (PHP_SAPI === 'cli-server' && $requested !== '/' && is_file(__DIR__ . $reques
     return false;
 }
 
-require __DIR__ . '/../vendor/autoload.php';
+// Two layouts. In development this file is in public/ with the PHP code and vendor/ above it. On shared hosting the
+// PHP code, vendor/ and the settings file sit in an app/ folder next to this file (closed to the web by its .htaccess).
+$root = is_dir(__DIR__ . '/app') ? __DIR__ . '/app' : dirname(__DIR__);
+
+require $root . '/vendor/autoload.php';
 
 use Graphin\ApiException;
 use Graphin\Auth;
@@ -25,8 +29,6 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
 
-$root = dirname(__DIR__);
-
 // Settings come from .env (KEY=VALUE lines, # for comments). A real environment variable wins over
 // .env, so the desktop app can set its own settings and needs no .env file.
 $env = [];
@@ -39,6 +41,14 @@ if (is_file($root . '/.env')) {
         $env[$key] = $value;
     }
 }
+// On shared hosting the settings are a PHP file, config.local.php, that returns an array of the same KEY => value pairs.
+// It is a .php file so the web server can never show its contents.
+if (is_file($root . '/config.local.php')) {
+    $local = require $root . '/config.local.php';
+    if (is_array($local)) {
+        $env = array_merge($env, array_map('strval', $local));
+    }
+}
 foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET', 'AUTH_REQUIRED'] as $key) {
     $value = getenv($key);
     if ($value !== false) {
@@ -46,6 +56,13 @@ foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 
     }
 }
 $debug = strtolower($env['APP_DEBUG'] ?? '') === 'true';
+
+// Where this app lives on the site. At the top of a site it is empty. In a subfolder such as /graphin it is that folder,
+// with index.php added when the address goes through it (shared hosting often does not rewrite addresses there).
+$script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+$folder = rtrim(str_replace('\\', '/', dirname($script)), '/');
+$base = str_starts_with($requested, $script) ? $script : $folder;
+$appPath = static fn (string $path): string => $base !== '' && str_starts_with($path, $base) ? (substr($path, strlen($base)) ?: '/') : $path;
 
 $db = new Database([
     'driver' => $env['DB_DRIVER'] ?? 'mysql',
@@ -85,21 +102,23 @@ if ($db->driver() === 'sqlite') {
 // unless AUTH_REQUIRED=true is set.
 $authRequired = isset($env['AUTH_REQUIRED']) ? strtolower($env['AUTH_REQUIRED']) === 'true' : $db->driver() !== 'sqlite';
 Auth::configure($authRequired);
-if ($authRequired && str_starts_with($requested, '/api')) {
+if ($authRequired && str_starts_with($appPath($requested), '/api')) {
     // The session lives in an HttpOnly cookie that is sent only from this site's own pages.
     session_set_cookie_params([
         'lifetime' => 60 * 60 * 24 * 30,
-        'path' => '/',
+        'path' => $folder . '/',
         'httponly' => true,
         'samesite' => 'Lax',
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
     ]);
     ini_set('session.gc_maxlifetime', (string) (60 * 60 * 24 * 30));
+    session_name('graphin_session');
     session_start();
     Auth::setUser(isset($_SESSION['user_id']) ? (string) $_SESSION['user_id'] : null);
 }
 
 $app = AppFactory::create();
+$app->setBasePath($base);
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
 
@@ -126,8 +145,8 @@ $app->get('/api/health', function (Request $request, Response $response): Respon
 
 // Every request that changes something must carry this header. A page on another site cannot add it without the
 // browser first asking this server for permission (which it never gives), so forged requests are refused.
-$app->add(function (Request $request, \Psr\Http\Server\RequestHandlerInterface $handler) use ($app, $authRequired): Response {
-    $path = $request->getUri()->getPath();
+$app->add(function (Request $request, \Psr\Http\Server\RequestHandlerInterface $handler) use ($app, $authRequired, $appPath): Response {
+    $path = $appPath($request->getUri()->getPath());
     if (!str_starts_with($path, '/api')) {
         return $handler->handle($request);
     }
@@ -171,14 +190,16 @@ $app->delete('/api/edges/{id}', [new EdgeController($db), 'destroy']);
 
 // Anything that is not /api serves the built React app. Client-side routes (such as /capture)
 // fall back to index.html.
-$app->get('/{path:.*}', function (Request $request, Response $response): Response {
-    $index = dirname(__DIR__) . '/public/index.html';
+$spa = function (Request $request, Response $response): Response {
+    $index = __DIR__ . '/index.html';
     if (!is_file($index)) {
         $response->getBody()->write('Graphin frontend is not built. Run "npm run build" in frontend/.');
         return $response->withStatus(503)->withHeader('Content-Type', 'text/plain');
     }
     $response->getBody()->write((string) file_get_contents($index));
     return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
-});
+};
+$app->get('/{path:.*}', $spa);
+$app->get('', $spa); // the folder's own address, such as /graphin/index.php
 
 $app->run();

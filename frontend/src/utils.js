@@ -32,10 +32,10 @@ export function youtubeThumbUrl(url) {
 
 /**
  * The bookmarklet: run on any page, it opens Graphin's capture window with the page's
- * address, title, highlighted text, thumbnail (og:image), and favicon. origin is Graphin's address.
+ * address, title, highlighted text, thumbnail (og:image), and favicon. folder is Graphin's address, ending in "/".
  * Written without "#" or "%" so it survives being stored as a bookmark.
  */
-export function bookmarkletCode(origin) {
+export function bookmarkletCode(folder) {
   return (
     'javascript:(function(){' +
     'var s=String(window.getSelection()).trim().slice(0,5000);' +
@@ -44,7 +44,7 @@ export function bookmarkletCode(origin) {
     'var q=new URLSearchParams({url:location.href,title:document.title,commentary:s});' +
     'try{if(m&&m.content)q.set("thumbnail_url",new URL(m.content,location.href).href);}catch(e){}' +
     'try{if(i&&i.href)q.set("favicon_url",i.href);}catch(e){}' +
-    `var u="${origin}/capture?"+q.toString();` +
+    `var u="${folder}index.html?capture=1&"+q.toString();` +
     // Browsers often block a pop-up that a bookmark opens. If that happens, open the capture form
     // in the current tab instead, so the save still works.
     'if(!window.open(u,"graphin","width=560,height=680")){location.href=u;}' +

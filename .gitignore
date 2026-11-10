@@ -3,3 +3,9 @@
 /public/assets/
 /public/index.html
 .env
+
+# Deployment (the SFTP login and the build output are never committed)
+/deploy/sftp.txt
+/deploy/dist/
+/deploy/stage/
+/deploy/deploy.log

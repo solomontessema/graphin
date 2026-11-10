@@ -8,7 +8,7 @@ import { bookmarkletCode } from '../utils.js';
 export default function BookmarkletDialog({ onClose }) {
   const linkRef = useRef(null);
   const [copied, setCopied] = useState(false);
-  const code = bookmarkletCode(window.location.origin);
+  const code = bookmarkletCode(new URL('./', window.location.href).href);
 
   // Set the href by hand. React warns about javascript: URLs passed as props.
   useEffect(() => {
