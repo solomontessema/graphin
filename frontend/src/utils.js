@@ -53,20 +53,15 @@ export function bookmarkletCode(origin) {
 }
 
 /**
- * CSS variables for a node's or group's appearance. prefix is "node" or "group"; the stylesheet
- * falls back to the default look for any variable that is not set.
+ * CSS variables for a node's appearance. prefix is "node"; the stylesheet falls back to the default look for any
+ * variable that is not set.
  */
 export function appearanceVars(style, prefix) {
   const vars = {};
   if (!style) return vars;
-  if (style.fill) {
-    vars[`--${prefix}-fill`] = style.fill;
-    // A group's background is the fill, lightened so the members stay readable on top.
-    if (prefix === 'group') vars['--group-bg'] = `color-mix(in srgb, ${style.fill} 18%, transparent)`;
-  }
-  // The text colour: the user's choice when set. A node's text is otherwise chosen to contrast with its
-  // background. A group's text sits on its title bar, which has the page surface, so it keeps the default.
-  const text = style.text || (prefix === 'node' && style.fill ? readableText(style.fill) : null);
+  if (style.fill) vars[`--${prefix}-fill`] = style.fill;
+  // The text colour: the user's choice when set, otherwise chosen to contrast with the background.
+  const text = style.text || (style.fill ? readableText(style.fill) : null);
   if (text) vars[`--${prefix}-text`] = text;
   if (style.stroke) vars[`--${prefix}-frame`] = style.stroke;
   if (style.width !== undefined) vars[`--${prefix}-frame-w`] = `${style.width}px`;

@@ -7,11 +7,15 @@ CREATE TABLE IF NOT EXISTS networks (
     id         TEXT NOT NULL PRIMARY KEY,
     name       TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+    tag_colors TEXT NULL,
+    cover_url  TEXT NULL,
+    tile_color TEXT NULL,
+    user_id    TEXT NULL
 );
 
--- Nodes: a saved link (or a note or a group). x and y are the canvas position. width, height, and
--- shape are used only by groups.
+-- Nodes: a saved link, a note, a label or a shape. x and y are the canvas position. width, height, and
+-- shape are used only by shapes.
 CREATE TABLE IF NOT EXISTS nodes (
     id            TEXT NOT NULL PRIMARY KEY,
     network_id    TEXT NOT NULL REFERENCES networks (id) ON DELETE CASCADE,
@@ -31,13 +35,14 @@ CREATE TABLE IF NOT EXISTS nodes (
     latitude      REAL NULL,
     longitude     REAL NULL,
     country       TEXT NULL,
+    refs          TEXT NULL,
+    tags          TEXT NULL,
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_nodes_network ON nodes (network_id);
 
 -- Edges: a relationship between two nodes. is_bidirectional = 0 draws an arrow from source to target.
--- BELONGS_TO links a node to a group (the source is the member, the target is the group).
 CREATE TABLE IF NOT EXISTS edges (
     id               TEXT NOT NULL PRIMARY KEY,
     network_id       TEXT NOT NULL REFERENCES networks (id) ON DELETE CASCADE,
@@ -46,6 +51,7 @@ CREATE TABLE IF NOT EXISTS edges (
     relationship     TEXT NOT NULL DEFAULT 'RELATED',
     is_bidirectional INTEGER NOT NULL DEFAULT 0,
     style            TEXT NULL,
+    tags             TEXT NULL,
     created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
     UNIQUE (source_id, target_id, relationship)
 );

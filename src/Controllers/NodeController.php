@@ -14,7 +14,10 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  */
 final class NodeController extends BaseController
 {
-    private const TYPES = ['webpage', 'video', 'image', 'pdf', 'note', 'group'];
+    private const TYPES = ['webpage', 'video', 'image', 'pdf', 'note', 'text', 'shape'];
+
+    /** Tiles use the first five. A shape drawn on the canvas can be any of them. */
+    public const SHAPES = ['rect', 'rounded', 'pill', 'ellipse', 'circle', 'triangle', 'diamond', 'pentagon', 'hexagon', 'star', 'arrow', 'polygon'];
 
     /** POST /api/networks/{id}/nodes {url?, title, type?, favicon_url?, thumbnail_url?, commentary?, x?, y?} */
     public function store(Request $request, Response $response, array $args): Response
@@ -25,17 +28,17 @@ final class NodeController extends BaseController
         $url = $this->optionalUrl($data, 'url');
         $title = $this->requiredString($data, 'title', self::TITLE_MAX);
         $type = $this->type($data, $url);
-        // A group is a box, not a page: it has no link, and its size is stored.
-        $isGroup = $type === 'group';
-        if ($isGroup) {
+        // A shape is a frame on the canvas, not a page: it has no link, and its size is stored.
+        $isShape = $type === 'shape';
+        if ($isShape) {
             $url = null;
         }
         $id = Database::uuid();
 
         $this->db->execute(
             'INSERT INTO nodes (id, network_id, type, url, title, favicon_url, thumbnail_url, commentary, x, y, width, height, shape, style,
-                                event_time, latitude, longitude, country)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                event_time, latitude, longitude, country, refs, tags)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $id,
                 $args['id'],
@@ -47,14 +50,16 @@ final class NodeController extends BaseController
                 $this->optionalString($data, 'commentary', self::COMMENTARY_MAX),
                 $this->number($data, 'x'),
                 $this->number($data, 'y'),
-                $isGroup ? $this->number($data, 'width', 600.0) : null,
-                $isGroup ? $this->number($data, 'height', 420.0) : null,
-                $isGroup ? $this->shape($data['shape'] ?? 'rect') : null,
+                $isShape ? $this->number($data, 'width', 600.0) : null,
+                $isShape ? $this->number($data, 'height', 400.0) : null,
+                isset($data['shape']) ? $this->shape($data['shape']) : ($isShape ? 'rect' : null),
                 Style::clean($data['style'] ?? null, Style::NODE_KEYS),
                 $this->optionalTime($data, 'time'),
                 $this->optionalCoordinate($data, 'latitude', 90.0),
                 $this->optionalCoordinate($data, 'longitude', 180.0),
                 $this->optionalString($data, 'country', 100),
+                $isShape ? null : $this->optionalReferences($data),
+                $isShape ? null : $this->optionalTags($data),
             ]
         );
         return $this->json($response, $this->findNodeOut($id), 201);
@@ -70,8 +75,8 @@ final class NodeController extends BaseController
             ? $this->requiredString($data, 'title', self::TITLE_MAX)
             : $node['title'];
         $url = array_key_exists('url', $data) ? $this->optionalUrl($data, 'url') : $node['url'];
-        // A group's shape can be changed here; other nodes have no shape.
-        $shape = $node['type'] === 'group' && array_key_exists('shape', $data)
+        // A tile's or a canvas shape's shape can be changed here (see SHAPES).
+        $shape = array_key_exists('shape', $data)
             ? $this->shape($data['shape'])
             : $node['shape'];
         $commentary = array_key_exists('commentary', $data)
@@ -89,11 +94,16 @@ final class NodeController extends BaseController
         $longitude = array_key_exists('longitude', $data) ? $this->optionalCoordinate($data, 'longitude', 180.0) : $node['longitude'];
         $country = array_key_exists('country', $data) ? $this->optionalString($data, 'country', 100) : $node['country'];
 
+        // References: the whole list is sent each time; null or an empty list clears it.
+        $refs = array_key_exists('references', $data) ? $this->optionalReferences($data) : $node['refs'];
+        // Tags: the whole list is sent each time; null or an empty list clears it.
+        $tags = array_key_exists('tags', $data) ? $this->optionalTags($data) : $node['tags'];
+
         $this->db->execute(
             'UPDATE nodes SET title = ?, url = ?, commentary = ?, shape = ?, style = ?,
-                              event_time = ?, latitude = ?, longitude = ?, country = ?
+                              event_time = ?, latitude = ?, longitude = ?, country = ?, refs = ?, tags = ?
              WHERE id = ?',
-            [$title, $url, $commentary, $shape, $style, $time, $latitude, $longitude, $country, $args['id']]
+            [$title, $url, $commentary, $shape, $style, $time, $latitude, $longitude, $country, $refs, $tags, $args['id']]
         );
         return $this->json($response, $this->findNodeOut($args['id']));
     }
@@ -119,12 +129,12 @@ final class NodeController extends BaseController
         return $type;
     }
 
-    /** A group is drawn as a rectangle or a circle. */
+    /** A tile or a canvas shape has one of the shapes in SHAPES. */
     private function shape(mixed $value): string
     {
         $shape = strtolower(trim((string) $value));
-        if (!in_array($shape, ['rect', 'rounded', 'pill', 'ellipse', 'circle'], true)) {
-            throw new ApiException(422, '"shape" must be rect, rounded, pill, ellipse or circle.');
+        if (!in_array($shape, self::SHAPES, true)) {
+            throw new ApiException(422, '"shape" must be one of: ' . implode(', ', self::SHAPES) . '.');
         }
         return $shape;
     }
@@ -168,12 +178,14 @@ final class NodeController extends BaseController
             'y' => (float) $row['y'],
             'width' => $row['width'] === null ? null : (float) $row['width'],
             'height' => $row['height'] === null ? null : (float) $row['height'],
-            'shape' => $row['type'] === 'group' ? ($row['shape'] ?? 'rect') : null,
+            'shape' => $row['shape'] ?? ($row['type'] === 'shape' ? 'rect' : null),
             'style' => Style::decode($row['style'] ?? null),
             'time' => $row['event_time'] ?? null,
             'latitude' => $row['latitude'] === null ? null : (float) $row['latitude'],
             'longitude' => $row['longitude'] === null ? null : (float) $row['longitude'],
             'country' => $row['country'] ?? null,
+            'references' => self::decodeReferences($row['refs'] ?? null),
+            'tags' => self::decodeTags($row['tags'] ?? null),
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
         ];

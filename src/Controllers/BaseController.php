@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Graphin\Controllers;
 
 use Graphin\ApiException;
+use Graphin\Auth;
 use Graphin\Database;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -14,6 +15,9 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 abstract class BaseController
 {
     protected const URL_MAX = 2048;
+    /** Far more references than a tile will ever have; it only stops a runaway request. */
+    protected const REFERENCES_MAX = 1000;
+    protected const TAGS_MAX = 100;
     protected const TITLE_MAX = 255;
     protected const COMMENTARY_MAX = 20000;
     protected const RELATIONSHIP_PATTERN = '/^[A-Z_]{1,50}$/';
@@ -87,6 +91,97 @@ abstract class BaseController
         return $url;
     }
 
+    /**
+     * A tile's references: any number of pages that add to its topic, each {url, title?}. Returns them as JSON for
+     * storage, or null when there are none. Links follow the same http and https rule as optionalUrl.
+     *
+     * @param array<string, mixed> $data
+     */
+    protected function optionalReferences(array $data, string $key = 'references'): ?string
+    {
+        if (!isset($data[$key]) || $data[$key] === null || $data[$key] === []) {
+            return null;
+        }
+        if (!is_array($data[$key]) || !array_is_list($data[$key])) {
+            throw new ApiException(422, "\"$key\" must be a list of links.");
+        }
+        if (count($data[$key]) > self::REFERENCES_MAX) {
+            throw new ApiException(422, "\"$key\" has more than " . self::REFERENCES_MAX . ' links.');
+        }
+        $clean = [];
+        foreach ($data[$key] as $reference) {
+            if (!is_array($reference)) {
+                throw new ApiException(422, "Each of \"$key\" must have a \"url\" and an optional \"title\".");
+            }
+            $url = $this->optionalUrl($reference, 'url');
+            if ($url === null) {
+                throw new ApiException(422, "Each of \"$key\" needs a \"url\".");
+            }
+            $title = $this->optionalString($reference, 'title', 255);
+            $clean[] = $title === null ? ['url' => $url] : ['url' => $url, 'title' => $title];
+        }
+        return json_encode($clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: null;
+    }
+
+    /**
+     * Tags (codes) on a tile or a link: short lower-case labels such as "trust" or "stance: against". Returns them as
+     * JSON for storage, or null when there are none. Repeats are dropped.
+     *
+     * @param array<string, mixed> $data
+     */
+    protected function optionalTags(array $data, string $key = 'tags'): ?string
+    {
+        if (!isset($data[$key]) || $data[$key] === null || $data[$key] === []) {
+            return null;
+        }
+        if (!is_array($data[$key]) || !array_is_list($data[$key])) {
+            throw new ApiException(422, "\"$key\" must be a list of tags.");
+        }
+        $tags = [];
+        foreach ($data[$key] as $tag) {
+            $tag = self::cleanTag($tag);
+            if ($tag !== null && !in_array($tag, $tags, true)) {
+                $tags[] = $tag;
+            }
+        }
+        if (count($tags) > self::TAGS_MAX) {
+            throw new ApiException(422, "\"$key\" has more than " . self::TAGS_MAX . ' tags.');
+        }
+        return $tags === [] ? null : json_encode($tags, JSON_UNESCAPED_UNICODE);
+    }
+
+    /** A tag as stored: trimmed, spaces collapsed, lower case, at most 40 characters, no commas. Null when empty. */
+    public static function cleanTag(mixed $tag): ?string
+    {
+        if (!is_string($tag)) {
+            throw new ApiException(422, 'A tag must be text.');
+        }
+        $tag = mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $tag)));
+        if ($tag === '') {
+            return null;
+        }
+        if (mb_strlen($tag) > 40 || preg_match('/[\p{Cc},]/u', $tag)) {
+            throw new ApiException(422, 'A tag is at most 40 characters and has no commas.');
+        }
+        return $tag;
+    }
+
+    /** The stored tags as a list for the API output. */
+    public static function decodeTags(?string $json): array
+    {
+        return self::decodeReferences($json);
+    }
+
+    /** The stored references as a list for the API output. */
+    public static function decodeReferences(?string $json): array
+    {
+        if ($json === null || $json === '') {
+            return [];
+        }
+        $list = json_decode($json, true);
+        return is_array($list) ? $list : [];
+    }
+
     /** @param array<string, mixed> $data */
     protected function number(array $data, string $key, float $default = 0.0): float
     {
@@ -111,8 +206,8 @@ abstract class BaseController
         if ($value === null) {
             return null;
         }
-        if (!preg_match('/^\d{4}(-\d{2}(-\d{2}(T\d{2}:\d{2})?)?)?$/', $value)) {
-            throw new ApiException(422, "\"$key\" must look like 1945, 1945-08, 1945-08-06 or 1945-08-06T14:30.");
+        if (!preg_match('/^(-?\d{1,9}|\d{4}(-\d{2}(-\d{2}(T\d{2}:\d{2})?)?)?)$/', $value)) {
+            throw new ApiException(422, "\"$key\" must look like 1945, 1945-08, 1945-08-06, 1945-08-06T14:30, or a year before the common era such as -300000.");
         }
         return $value;
     }
@@ -136,7 +231,10 @@ abstract class BaseController
     /** Looks up a network by id, or responds 404. */
     protected function findNetwork(string $id): array
     {
-        $network = $this->db->fetchOne('SELECT * FROM networks WHERE id = ?', [$id]);
+        // With accounts, a network that belongs to someone else is answered as if it did not exist.
+        $network = Auth::required()
+            ? $this->db->fetchOne('SELECT * FROM networks WHERE id = ? AND user_id = ?', [$id, Auth::userId()])
+            : $this->db->fetchOne('SELECT * FROM networks WHERE id = ?', [$id]);
         if ($network === null) {
             throw new ApiException(404, 'Network not found.');
         }
@@ -150,6 +248,7 @@ abstract class BaseController
         if ($node === null) {
             throw new ApiException(404, 'Node not found.');
         }
+        $this->findNetwork($node['network_id']);
         return $node;
     }
 }

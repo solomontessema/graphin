@@ -1,54 +1,29 @@
 import { useState } from 'react';
-
-const PRESETS = ['SUPPORTS', 'USES', 'REFERENCES', 'EXPLAINS', 'DEPENDS_ON', 'IMPLEMENTS', 'CONTRADICTS', 'RELATED'];
+import RelationshipPicker from './RelationshipPicker.jsx';
 
 /**
- * Asks how two nodes are related when you connect them on the canvas.
+ * Asks how two items are related when you connect them on the canvas.
  * direction: forward draws an arrow from source to target, backward reverses it, both draws no arrow.
- * belongs: one of the two is a group. Then the only question is whether to add the node to it.
  */
-export default function RelationDialog({ source, target, belongs = false, onCancel, onSave }) {
-  const [relationship, setRelationship] = useState('SUPPORTS');
+export default function RelationDialog({ source, target, used, existing = [], onCancel, onSave }) {
+  // The first standard kind these two items are not already linked by.
+  const [relationship, setRelationship] = useState(() => ['SUPPORTS', 'RELATED', 'CAUSES', 'LEADS_TO'].find((r) => !existing.includes(r)) || '');
   const [direction, setDirection] = useState('forward');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
-  const group = source.type === 'group' ? source : target;
-  const member = source.type === 'group' ? target : source;
+  const stored = relationship.trim().toUpperCase().replace(/[ -]+/g, '_');
+  const taken = stored !== '' && existing.includes(stored);
 
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      await onSave(belongs ? { relationship: 'BELONGS_TO' } : { relationship, direction });
+      await onSave({ relationship, direction });
     } catch (e) {
       setError(e.message);
       setBusy(false);
     }
-  }
-
-  if (belongs) {
-    return (
-      <div className="overlay" onMouseDown={onCancel}>
-        <form className="dialog" onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
-          <h2>Add to group?</h2>
-          <p>
-            <strong>{member.title}</strong> will belong to <strong>{group.title}</strong>. Members sit inside their
-            group, so no arrow is drawn, and the group grows to fit them.
-          </p>
-          {error && <p className="error">{error}</p>}
-          <div className="form-row end">
-            <button type="button" className="ghost" onClick={onCancel}>
-              Cancel
-            </button>
-            <button type="submit" disabled={busy}>
-              Add to group
-            </button>
-          </div>
-        </form>
-      </div>
-    );
   }
 
   return (
@@ -59,46 +34,41 @@ export default function RelationDialog({ source, target, belongs = false, onCanc
           <strong>{source.title}</strong> and <strong>{target.title}</strong>
         </p>
 
+        {existing.length > 0 && (
+          <p className="muted small">
+            Already linked by: {existing.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}. Add another link with a different relationship.
+          </p>
+        )}
+
         <label>
           Relationship
-          <input
-            list="relationship-presets"
-            value={relationship}
-            onChange={(e) => setRelationship(e.target.value)}
-            maxLength={50}
-            required
-            autoFocus
-          />
-          <datalist id="relationship-presets">
-            {PRESETS.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
+          <RelationshipPicker value={relationship} onChange={setRelationship} used={used} autoFocus />
         </label>
 
-        <fieldset>
-          <legend>Direction</legend>
-          <label className="radio">
-            <input type="radio" name="direction" checked={direction === 'forward'} onChange={() => setDirection('forward')} />
-            {source.title} → {target.title}
-          </label>
-          <label className="radio">
-            <input type="radio" name="direction" checked={direction === 'backward'} onChange={() => setDirection('backward')} />
-            {source.title} ← {target.title}
-          </label>
-          <label className="radio">
-            <input type="radio" name="direction" checked={direction === 'both'} onChange={() => setDirection('both')} />
-            {source.title} ↔ {target.title}
-          </label>
-        </fieldset>
+            <fieldset>
+              <legend>Direction</legend>
+              <label className="radio">
+                <input type="radio" name="direction" checked={direction === 'forward'} onChange={() => setDirection('forward')} />
+                {source.title} → {target.title}
+              </label>
+              <label className="radio">
+                <input type="radio" name="direction" checked={direction === 'backward'} onChange={() => setDirection('backward')} />
+                {source.title} ← {target.title}
+              </label>
+              <label className="radio">
+                <input type="radio" name="direction" checked={direction === 'both'} onChange={() => setDirection('both')} />
+                {source.title} ↔ {target.title}
+              </label>
+            </fieldset>
 
+        {taken && <p className="error">These two items are already linked by that relationship. Choose a different one.</p>}
         {error && <p className="error">{error}</p>}
 
         <div className="form-row end">
           <button type="button" className="ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" disabled={busy}>
+          <button type="submit" disabled={busy || taken || stored === ''}>
             Connect
           </button>
         </div>

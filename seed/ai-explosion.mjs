@@ -6,6 +6,8 @@
 // Every link is a real page. Pages that refuse embedding are noted in their commentary, and the
 // canvas shows an "Open ↗" link for them. Run it once: if the network already exists, it stops.
 
+import { login } from './login.mjs';
+
 const BASE = process.argv[2] || 'http://localhost:8100';
 const NETWORK_NAME = 'The AI Explosion: the technologies behind the boom';
 
@@ -185,6 +187,7 @@ async function call(method, path, body) {
 }
 
 async function main() {
+  await login(BASE);
   const existing = await call('GET', '/networks');
   if (existing.some((n) => n.name === NETWORK_NAME)) {
     console.log(`"${NETWORK_NAME}" already exists. Delete it in Graphin first, then run this again.`);

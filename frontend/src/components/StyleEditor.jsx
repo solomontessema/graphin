@@ -5,7 +5,7 @@ const SWATCHES = ['#1d4ed8', '#0891b2', '#047857', '#65a30d', '#fbbf24', '#ea580
 const SAVE_DELAY = 350;
 
 /**
- * Edits the appearance of one node, group, or link: a background colour, a frame or line colour, and
+ * Edits the appearance of one node or link: a background colour, a frame or line colour, and
  * a width. Changes are saved a moment after the last one, so dragging the width slider saves once.
  * The editor starts from the style it is given and does not follow later changes, so it never jumps
  * back while you are still editing. Give it a key that changes with the item.

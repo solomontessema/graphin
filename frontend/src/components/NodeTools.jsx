@@ -1,5 +1,5 @@
 /**
- * The edit and trash icons in the top-right corner of a node or group. They do not start a drag, and
+ * The edit and trash icons in the top-right corner of a tile. They do not start a drag, and
  * they are faint until the item is hovered or selected (see styles.css).
  */
 export default function NodeTools({ label, onEdit, onRemove }) {

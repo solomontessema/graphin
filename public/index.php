@@ -14,9 +14,12 @@ if (PHP_SAPI === 'cli-server' && $requested !== '/' && is_file(__DIR__ . $reques
 require __DIR__ . '/../vendor/autoload.php';
 
 use Graphin\ApiException;
+use Graphin\Auth;
+use Graphin\Controllers\AuthController;
 use Graphin\Controllers\EdgeController;
 use Graphin\Controllers\NetworkController;
 use Graphin\Controllers\NodeController;
+use Graphin\Controllers\PageController;
 use Graphin\Database;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -36,7 +39,7 @@ if (is_file($root . '/.env')) {
         $env[$key] = $value;
     }
 }
-foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET'] as $key) {
+foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET', 'AUTH_REQUIRED'] as $key) {
     $value = getenv($key);
     if ($value !== false) {
         $env[$key] = $value;
@@ -65,6 +68,35 @@ if ($db->driver() === 'sqlite') {
     $db->ensureColumn('nodes', 'latitude', 'REAL NULL');
     $db->ensureColumn('nodes', 'longitude', 'REAL NULL');
     $db->ensureColumn('nodes', 'country', 'TEXT NULL');
+    $db->ensureColumn('nodes', 'refs', 'TEXT NULL');
+    $db->ensureColumn('nodes', 'tags', 'TEXT NULL');
+    $db->ensureColumn('edges', 'tags', 'TEXT NULL');
+    $db->ensureColumn('networks', 'tag_colors', 'TEXT NULL');
+    $db->ensureColumn('networks', 'cover_url', 'TEXT NULL');
+    $db->ensureColumn('networks', 'tile_color', 'TEXT NULL');
+    // Unused on the desktop (no accounts), but the same queries run there.
+    $db->ensureColumn('networks', 'user_id', 'TEXT NULL');
+    // Containers (groups) no longer exist. Remove any an older database still holds, with their links.
+    $db->execute("DELETE FROM edges WHERE relationship = 'BELONGS_TO'");
+    $db->execute("DELETE FROM nodes WHERE type = 'group'");
+}
+
+// Accounts are used by the web product (MariaDB). The desktop app (SQLite) is one person's own computer and has none,
+// unless AUTH_REQUIRED=true is set.
+$authRequired = isset($env['AUTH_REQUIRED']) ? strtolower($env['AUTH_REQUIRED']) === 'true' : $db->driver() !== 'sqlite';
+Auth::configure($authRequired);
+if ($authRequired && str_starts_with($requested, '/api')) {
+    // The session lives in an HttpOnly cookie that is sent only from this site's own pages.
+    session_set_cookie_params([
+        'lifetime' => 60 * 60 * 24 * 30,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    ]);
+    ini_set('session.gc_maxlifetime', (string) (60 * 60 * 24 * 30));
+    session_start();
+    Auth::setUser(isset($_SESSION['user_id']) ? (string) $_SESSION['user_id'] : null);
 }
 
 $app = AppFactory::create();
@@ -92,12 +124,42 @@ $app->get('/api/health', function (Request $request, Response $response): Respon
     return $response->withHeader('Content-Type', 'application/json');
 });
 
+// Every request that changes something must carry this header. A page on another site cannot add it without the
+// browser first asking this server for permission (which it never gives), so forged requests are refused.
+$app->add(function (Request $request, \Psr\Http\Server\RequestHandlerInterface $handler) use ($app, $authRequired): Response {
+    $path = $request->getUri()->getPath();
+    if (!str_starts_with($path, '/api')) {
+        return $handler->handle($request);
+    }
+    $reply = function (int $status, string $message) use ($app): Response {
+        $response = $app->getResponseFactory()->createResponse($status);
+        $response->getBody()->write((string) json_encode(['error' => $message]));
+        return $response->withHeader('Content-Type', 'application/json');
+    };
+    if ($authRequired && !in_array($request->getMethod(), ['GET', 'HEAD', 'OPTIONS'], true) && $request->getHeaderLine('X-Requested-With') !== 'graphin') {
+        return $reply(403, 'This request did not come from Graphin.');
+    }
+    // Everything except health and signing in needs a signed-in user.
+    $open = $path === '/api/health' || str_starts_with($path, '/api/auth/');
+    if ($authRequired && !$open && Auth::userId() === null) {
+        return $reply(401, 'Please log in.');
+    }
+    return $handler->handle($request);
+});
+
+$app->get('/api/auth/me', [new AuthController($db), 'me']);
+$app->post('/api/auth/register', [new AuthController($db), 'register']);
+$app->post('/api/auth/login', [new AuthController($db), 'login']);
+$app->post('/api/auth/logout', [new AuthController($db), 'logout']);
+
 $app->get('/api/networks', [new NetworkController($db), 'index']);
 $app->post('/api/networks', [new NetworkController($db), 'store']);
 $app->put('/api/networks/{id}', [new NetworkController($db), 'update']);
 $app->delete('/api/networks/{id}', [new NetworkController($db), 'destroy']);
 $app->get('/api/networks/{id}/graph', [new NetworkController($db), 'graph']);
 $app->put('/api/networks/{id}/positions', [new NetworkController($db), 'positions']);
+$app->put('/api/networks/{id}/restore', [new NetworkController($db), 'restore']);
+$app->get('/api/embeddable', [new PageController($db), 'embeddable']);
 
 $app->post('/api/networks/{id}/nodes', [new NodeController($db), 'store']);
 $app->put('/api/nodes/{id}', [new NodeController($db), 'update']);

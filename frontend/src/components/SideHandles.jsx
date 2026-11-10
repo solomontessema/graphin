@@ -9,32 +9,15 @@ const SIDES = [
   { side: 'left', position: Position.Left },
 ];
 
-// A point at 28% along a side, so the middle of the side stays free for resizing a container.
-function offsetFor(side) {
-  return side === 'top' || side === 'bottom' ? { left: '28%' } : { top: '28%' };
-}
-
-/** The connection points of a tile or a container: a source and a target on each of the four sides. */
-export default function SideHandles({ offset = false }) {
+/** The connection points of a tile: a source and a target at the centre of each of the four sides. */
+export default function SideHandles() {
   return (
     <>
       {SIDES.map(({ side, position }) => (
-        <Handle
-          key={`t-${side}`}
-          id={`t-${side}`}
-          type="target"
-          position={position}
-          style={offset ? offsetFor(side) : undefined}
-        />
+        <Handle key={`t-${side}`} id={`t-${side}`} type="target" position={position} />
       ))}
       {SIDES.map(({ side, position }) => (
-        <Handle
-          key={`s-${side}`}
-          id={`s-${side}`}
-          type="source"
-          position={position}
-          style={offset ? offsetFor(side) : undefined}
-        />
+        <Handle key={`s-${side}`} id={`s-${side}`} type="source" position={position} />
       ))}
     </>
   );

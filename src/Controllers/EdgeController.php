@@ -31,28 +31,17 @@ final class EdgeController extends BaseController
 
         $relationship = $this->relationship($data);
         $bidirectional = !empty($data['is_bidirectional']) ? 1 : 0;
-        if ($relationship === 'BELONGS_TO') {
-            $this->assertMembership($sourceId, $targetId);
-            // Membership is drawn as containment, not as an arrow.
-            $bidirectional = 0;
-        }
 
-        $exists = $this->db->fetchOne(
-            'SELECT id FROM edges WHERE source_id = ? AND target_id = ? AND relationship = ?',
-            [$sourceId, $targetId, $relationship]
-        );
-        if ($exists !== null) {
-            throw new ApiException(409, 'These two nodes already have that relationship.');
-        }
+        $this->assertNotLinkedBy($sourceId, $targetId, $relationship, null);
 
         $id = Database::uuid();
         $this->db->execute(
-            'INSERT INTO edges (id, network_id, source_id, target_id, relationship, is_bidirectional, style)
-             VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$id, $args['id'], $sourceId, $targetId, $relationship, $bidirectional, Style::clean($data['style'] ?? null, Style::EDGE_KEYS)]
+            'INSERT INTO edges (id, network_id, source_id, target_id, relationship, is_bidirectional, style, tags)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$id, $args['id'], $sourceId, $targetId, $relationship, $bidirectional, Style::clean($data['style'] ?? null, Style::EDGE_KEYS), $this->optionalTags($data)]
         );
         $row = $this->db->fetchOne(
-            'SELECT id, source_id, target_id, relationship, is_bidirectional, style FROM edges WHERE id = ?',
+            'SELECT id, source_id, target_id, relationship, is_bidirectional, style, tags FROM edges WHERE id = ?',
             [$id]
         );
         return $this->json($response, [
@@ -62,24 +51,58 @@ final class EdgeController extends BaseController
             'relationship' => $row['relationship'],
             'is_bidirectional' => (bool) $row['is_bidirectional'],
             'style' => Style::decode($row['style'] ?? null),
+            'tags' => self::decodeTags($row['tags'] ?? null),
         ], 201);
     }
 
-    /** PUT /api/edges/{id} {style}: the line colour and weight. A style of null resets the line. */
+    /**
+     * PUT /api/edges/{id}: any of
+     *   style             the line colour and weight; null resets the line
+     *   relationship      the label, as for a new link
+     *   is_bidirectional  arrows at both ends
+     *   reverse           true swaps the two ends, so the arrow points the other way
+     *   tags              the link's tags (codes); null or an empty list clears them
+     */
     public function update(Request $request, Response $response, array $args): Response
     {
         $row = $this->db->fetchOne('SELECT * FROM edges WHERE id = ?', [$args['id']]);
         if ($row === null) {
             throw new ApiException(404, 'Edge not found.');
         }
+        $this->findNetwork($row['network_id']);
         $data = $this->body($request);
         $style = array_key_exists('style', $data)
             ? Style::clean($data['style'], Style::EDGE_KEYS)
             : $row['style'];
-        $this->db->execute('UPDATE edges SET style = ? WHERE id = ?', [$style, $args['id']]);
+
+        $tags = array_key_exists('tags', $data) ? $this->optionalTags($data) : $row['tags'];
+
+        $source = $row['source_id'];
+        $target = $row['target_id'];
+        if (!empty($data['reverse'])) {
+            [$source, $target] = [$target, $source];
+        }
+        $relationship = $row['relationship'];
+        if (array_key_exists('relationship', $data)) {
+            $relationship = $this->relationship($data);
+        }
+        $bidirectional = array_key_exists('is_bidirectional', $data)
+            ? (!empty($data['is_bidirectional']) ? 1 : 0)
+            : (int) $row['is_bidirectional'];
+
+        // Only a changed relationship can collide with another link between the same two items.
+        if ($relationship !== $row['relationship']) {
+            $this->assertNotLinkedBy($source, $target, $relationship, $args['id']);
+        }
+
+        $this->db->execute(
+            'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?
+             WHERE id = ?',
+            [$style, $source, $target, $relationship, $bidirectional, $tags, $args['id']]
+        );
 
         $row = $this->db->fetchOne(
-            'SELECT id, source_id, target_id, relationship, is_bidirectional, style FROM edges WHERE id = ?',
+            'SELECT id, source_id, target_id, relationship, is_bidirectional, style, tags FROM edges WHERE id = ?',
             [$args['id']]
         );
         return $this->json($response, [
@@ -89,16 +112,19 @@ final class EdgeController extends BaseController
             'relationship' => $row['relationship'],
             'is_bidirectional' => (bool) $row['is_bidirectional'],
             'style' => Style::decode($row['style'] ?? null),
+            'tags' => self::decodeTags($row['tags'] ?? null),
         ]);
     }
 
     /** DELETE /api/edges/{id} */
     public function destroy(Request $request, Response $response, array $args): Response
     {
-        $affected = $this->db->execute('DELETE FROM edges WHERE id = ?', [$args['id']]);
-        if ($affected === 0) {
+        $row = $this->db->fetchOne('SELECT network_id FROM edges WHERE id = ?', [$args['id']]);
+        if ($row === null) {
             throw new ApiException(404, 'Edge not found.');
         }
+        $this->findNetwork($row['network_id']);
+        $this->db->execute('DELETE FROM edges WHERE id = ?', [$args['id']]);
         return $response->withStatus(204);
     }
 
@@ -108,6 +134,24 @@ final class EdgeController extends BaseController
      *
      * @param array<string, mixed> $data
      */
+    /**
+     * Two items may be joined by any number of links, as long as each one has a different relationship. The direction
+     * does not make a link different: "A supports B" and "B supports A" are the same relationship.
+     */
+    private function assertNotLinkedBy(string $a, string $b, string $relationship, ?string $exceptId): void
+    {
+        $sql = 'SELECT id FROM edges WHERE ((source_id = ? AND target_id = ?) OR (source_id = ? AND target_id = ?)) AND relationship = ?';
+        $params = [$a, $b, $b, $a, $relationship];
+        if ($exceptId !== null) {
+            $sql .= ' AND id <> ?';
+            $params[] = $exceptId;
+        }
+        if ($this->db->fetchOne($sql, $params) !== null) {
+            $name = strtolower(str_replace('_', ' ', $relationship));
+            throw new ApiException(409, "These two items are already linked by \"$name\". Choose a different relationship.");
+        }
+    }
+
     private function relationship(array $data): string
     {
         $raw = isset($data['relationship']) ? (string) $data['relationship'] : 'RELATED';
@@ -119,44 +163,6 @@ final class EdgeController extends BaseController
             throw new ApiException(422, 'Relationship must be letters, spaces, or underscores (50 characters at most).');
         }
         return $label;
-    }
-
-    /**
-     * BELONGS_TO puts a node inside a container. The source is the member and the target is the container.
-     * A node can belong to several containers at once (overlapping frames), and a container can belong to
-     * another container (nesting). The only rule is that nothing may end up containing itself.
-     */
-    private function assertMembership(string $memberId, string $groupId): void
-    {
-        $group = $this->findNode($groupId);
-        if ($group['type'] !== 'group') {
-            throw new ApiException(422, 'A node can only belong to a group.');
-        }
-        if ($memberId === $groupId) {
-            throw new ApiException(422, 'A group cannot contain itself.');
-        }
-        // Walk up from the container: if the member is reached, adding this link would close a loop.
-        $frontier = [$groupId];
-        $seen = [$groupId => true];
-        while ($frontier !== []) {
-            $next = [];
-            foreach ($frontier as $id) {
-                $rows = $this->db->fetchAll(
-                    "SELECT target_id FROM edges WHERE source_id = ? AND relationship = 'BELONGS_TO'",
-                    [$id]
-                );
-                foreach ($rows as $row) {
-                    if ($row['target_id'] === $memberId) {
-                        throw new ApiException(422, 'That would put a group inside itself.');
-                    }
-                    if (!isset($seen[$row['target_id']])) {
-                        $seen[$row['target_id']] = true;
-                        $next[] = $row['target_id'];
-                    }
-                }
-            }
-            $frontier = $next;
-        }
     }
 
     private function assertInNetwork(string $nodeId, string $networkId): void
