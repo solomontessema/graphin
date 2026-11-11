@@ -127,7 +127,7 @@ export default function Landing({ onAuth }) {
           </p>
           <ul className="hero-points">
             <li>Free account. No credit card.</li>
-            <li>Your graphs are private to you.</li>
+            <li>Tags, maps and timelines included.</li>
             <li>Works in your browser, nothing to install.</li>
           </ul>
         </div>
