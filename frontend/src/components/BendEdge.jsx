@@ -47,13 +47,13 @@ const pointOn = ([a, c1, c2, b], t) => {
  *
  * data: { label, pts, fan, active, tags, tagColours, actions: { move(id, pts), commit(id, pts), reset(id), click(event, id) } }
  */
-export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerStart, markerEnd, style, data }) {
+export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data }) {
   const { screenToFlowPosition } = useReactFlow();
   const { label, pts: saved = [], fan = 0, active = false, actions, tags = [], tagColours, twoWay = false } = data;
   const drag = useRef(null);
   const dragged = useRef(false);
   const pathRef = useRef(null);
-  const [chevron, setChevron] = useState(null);
+  const [chevrons, setChevrons] = useState([]);
 
   const middle = { x: (sourceX + targetX) / 2, y: (sourceY + targetY) / 2 };
   const source = { x: sourceX, y: sourceY };
@@ -85,20 +85,16 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
     [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   }
 
-  // A small arrow on the line, a little past the label towards the target, so the direction can be read without
-  // looking at the ends. It is placed from the drawn line itself, so it follows any bend.
+  // Small arrows on the line show its direction; the line itself has no arrowheads. A one-way link has one, a little past
+  // the label towards the target. A two-way link has one each way, on either side of the label. They are placed from the
+  // drawn line, so they follow any bend. On a short line the arrow sits near the target end, where the label is not.
   useLayoutEffect(() => {
     const el = pathRef.current;
-    if (!el || twoWay) {
-      setChevron(null);
+    const length = el ? el.getTotalLength() : 0;
+    if (!el || length < 36) {
+      setChevrons([]);
       return;
     }
-    const length = el.getTotalLength();
-    if (length < 80) {
-      setChevron(null);
-      return;
-    }
-    // Where the label is along the line.
     let at = 0;
     let best = Infinity;
     for (let step = 0; step <= 60; step += 1) {
@@ -109,12 +105,18 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
         at = (length * step) / 60;
       }
     }
-    // Clear of the label (about half its width), but never past the last quarter of the line.
-    const spot = length >= 260 ? Math.min(at + 90, length * 0.8) : Math.min(length * 0.8, at + 55);
-    const a = el.getPointAtLength(Math.max(spot - 2, 0));
-    const b = el.getPointAtLength(Math.min(spot + 2, length));
-    const next = { x: Math.round(b.x * 10) / 10, y: Math.round(b.y * 10) / 10, angle: Math.round((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI) };
-    setChevron((old) => (old && old.x === next.x && old.y === next.y && old.angle === next.angle ? old : next));
+    const place = (spot, reverse) => {
+      const s = Math.min(Math.max(spot, 8), length - 8);
+      const a = el.getPointAtLength(Math.max(s - 2, 0));
+      const b = el.getPointAtLength(Math.min(s + 2, length));
+      const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI + (reverse ? 180 : 0);
+      return { x: Math.round(b.x * 10) / 10, y: Math.round(b.y * 10) / 10, angle: Math.round(angle) };
+    };
+    const gap = length >= 260 ? 90 : 55;
+    const forward = length >= 200 ? Math.min(at + gap, length * 0.85) : length - 18;
+    const list = [place(forward, false)];
+    if (twoWay) list.unshift(place(length >= 200 ? Math.max(at - gap, length * 0.15) : 18, true));
+    setChevrons((old) => (JSON.stringify(old) === JSON.stringify(list) ? old : list));
   }, [path, labelX, labelY, twoWay]);
 
   const toOffsets = (list) => list.map((p) => [Math.round((p.x - middle.x) * 10) / 10, Math.round((p.y - middle.y) * 10) / 10]);
@@ -213,13 +215,14 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
 
   return (
     <>
-      <BaseEdge id={id} path={path} markerStart={markerStart} markerEnd={markerEnd} style={style} interactionWidth={24} />
+      <BaseEdge id={id} path={path} style={style} interactionWidth={24} />
       <path ref={pathRef} d={path} fill="none" stroke="none" pointerEvents="none" />
-      {chevron && (
+      {chevrons.map((c, i) => (
         <path
+          key={i}
           className="edge-chevron"
           d="M -6,-6 L 4,0 L -6,6"
-          transform={`translate(${chevron.x} ${chevron.y}) rotate(${chevron.angle})`}
+          transform={`translate(${c.x} ${c.y}) rotate(${c.angle})`}
           fill="none"
           stroke={style?.stroke}
           strokeWidth={Math.max(2.5, (style?.strokeWidth || 2.5) + 0.5)}
@@ -227,7 +230,7 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
           strokeLinejoin="round"
           pointerEvents="none"
         />
-      )}
+      ))}
       <path d={path} fill="none" stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} onClick={(event) => event.stopPropagation()} onDoubleClick={onLineDouble}>
         <title>Double-click to add a point, then drag it to shape the line.</title>
       </path>

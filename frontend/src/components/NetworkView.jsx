@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
-  MarkerType,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -51,13 +50,8 @@ const MAP_NODE = {
   focusable: false,
   data: {},
 };
-// Arrowheads and lines are drawn large enough to read at the default zoom.
+// The default colour of a link's line. Direction is shown by small arrows on the line (see BendEdge), not arrowheads.
 const EDGE_COLOR = '#7a869c';
-// Arrowheads grow with the line weight, so a heavy line keeps a proportionate arrow.
-const arrowFor = (color, weight) => {
-  const size = Math.round(20 + weight * 2.4);
-  return { type: MarkerType.ArrowClosed, width: size, height: size, color };
-};
 // The card closes shortly after the pointer leaves both the node and the card.
 const CLOSE_DELAY = 300;
 const CARD_WIDTH = 380;
@@ -749,8 +743,6 @@ function Board({ networkId, user, onLogout }) {
             ...sidesBetween(centres.get(e.source_id), centres.get(e.target_id)),
             type: 'bend',
             data: { label: e.relationship.replace(/_/g, ' ').toLowerCase(), pts: ptsOf(e.style), active: edgeCard?.id === e.id, twoWay: Boolean(e.is_bidirectional), fan: fanOf(e), tags: e.tags || [], tagColours, actions: edgeActions },
-            markerStart: e.is_bidirectional ? arrowFor(stroke, width) : undefined,
-            markerEnd: e.is_bidirectional ? undefined : arrowFor(stroke, width),
             style: { stroke, strokeWidth: width },
             className: 'graph-edge',
           };
