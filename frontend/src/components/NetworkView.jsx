@@ -748,7 +748,7 @@ function Board({ networkId, user, onLogout }) {
             target: e.target_id,
             ...sidesBetween(centres.get(e.source_id), centres.get(e.target_id)),
             type: 'bend',
-            data: { label: e.relationship.replace(/_/g, ' ').toLowerCase(), pts: ptsOf(e.style), active: edgeCard?.id === e.id, fan: fanOf(e), tags: e.tags || [], tagColours, actions: edgeActions },
+            data: { label: e.relationship.replace(/_/g, ' ').toLowerCase(), pts: ptsOf(e.style), active: edgeCard?.id === e.id, twoWay: Boolean(e.is_bidirectional), fan: fanOf(e), tags: e.tags || [], tagColours, actions: edgeActions },
             markerStart: e.is_bidirectional ? arrowFor(stroke, width) : undefined,
             markerEnd: e.is_bidirectional ? undefined : arrowFor(stroke, width),
             style: { stroke, strokeWidth: width },
