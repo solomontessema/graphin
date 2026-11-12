@@ -7,9 +7,10 @@ import { bendOf, withBend, withoutBend } from '../edgeBend.js';
 
 /**
  * The card by a link (relationship line): its label, its direction, its colour and weight, and deleting it.
+ * When several relationships join the same two items, they are listed first; picking one edits that one.
  * Membership links are not shown on the canvas, so this card is only for links between items.
  */
-export default function EdgeCard({ edge, titles, style, used, allTags, tagColours, onSaved, onDeleted, onClose }) {
+export default function EdgeCard({ edge, pair = [edge], onPick, titles, style, used, allTags, tagColours, onSaved, onDeleted, onClose }) {
   const from = titles.get(edge.source_id) || 'Unknown';
   const to = titles.get(edge.target_id) || 'Unknown';
   const label = edge.relationship.replace(/_/g, ' ').toLowerCase();
@@ -54,6 +55,30 @@ export default function EdgeCard({ edge, titles, style, used, allTags, tagColour
         </button>
       </header>
       <div className="card-body">
+        {pair.length > 1 && (
+          <>
+            <h3>Relationships between these two ({pair.length})</h3>
+            <ul className="edge-pair-list">
+              {pair.map((other) => (
+                <li key={other.id}>
+                  <button
+                    type="button"
+                    className={`link-button${other.id === edge.id ? ' is-current' : ''}`}
+                    aria-pressed={other.id === edge.id}
+                    onClick={() => onPick?.(other.id)}
+                  >
+                    {other.relationship.replace(/_/g, ' ').toLowerCase()}
+                  </button>
+                  {other.is_bidirectional && <span className="muted"> (both ways)</span>}{' '}
+                  <span className="muted small">
+                    {titles.get(other.source_id) || 'Unknown'} → {titles.get(other.target_id) || 'Unknown'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         <form className="edge-label" onSubmit={saveLabel}>
           <label>
             Relationship

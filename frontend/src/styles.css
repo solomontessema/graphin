@@ -1809,3 +1809,7 @@ button.on {
 /* Several relationships on one line: each on its own line of the label. */
 .edge-label-line { display: block; }
 .edge-label-line + .edge-label-line { margin-top: 3px; }
+
+/* The other relationships between the same two tiles, listed at the top of a link's card. */
+.edge-pair-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.edge-pair-list .is-current { font-weight: 700; }

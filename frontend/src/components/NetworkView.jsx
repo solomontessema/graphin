@@ -60,6 +60,9 @@ const CARD_MAX_HEIGHT = 460; // matches .node-card max-height in styles.css
 const PLACEHOLDER_TITLE = { note: 'New tile', text: 'Text', shape: 'Shape' };
 const CARD_GAP = 12;
 
+/** True when two relationships join the same two items, in either direction. */
+const samePair = (a, b) => (a.source_id === b.source_id && a.target_id === b.target_id) || (a.source_id === b.target_id && a.target_id === b.source_id);
+
 /** Where the card goes: beside the node, on the right, or on the left when there is no room. */
 function placeBeside(rect) {
   const height = Math.min(CARD_MAX_HEIGHT, window.innerHeight - 16);
@@ -1052,9 +1055,13 @@ function Board({ networkId, user, onLogout }) {
     setEdges((es) => es.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
   }
 
+  // Deleting a relationship moves the card to another relationship between the same two items, if there is one.
   function deletedEdge(id) {
-    setEdges((es) => es.filter((e) => e.id !== id));
-    setEdgeCard(null);
+    const gone = edges.find((e) => e.id === id);
+    const rest = edges.filter((e) => e.id !== id);
+    setEdges(rest);
+    const sibling = gone && rest.find((e) => samePair(e, gone));
+    setEdgeCard((c) => (sibling && c ? { ...c, id: sibling.id } : null));
   }
 
   // Edit is for changing the link, so it pins the card.
@@ -1602,6 +1609,8 @@ function Board({ networkId, user, onLogout }) {
       {edgeCard && activeEdge && (
         <EdgeCard
           edge={activeEdge}
+          pair={edges.filter((e) => samePair(e, activeEdge))}
+          onPick={(id) => setEdgeCard((c) => (c ? { ...c, id } : c))}
           titles={titles}
           used={relationships}
           allTags={tagNames}
