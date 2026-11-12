@@ -1,15 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, useStore } from '@xyflow/react';
-import { appearanceVars, hostFromUrl, youtubeThumbUrl } from '../utils.js';
+import { appearanceVars } from '../utils.js';
+import { linksOf, mediaOf } from '../links.js';
 import NodeTools from './NodeTools.jsx';
 import SideHandles from './SideHandles.jsx';
-import PageView, { useFramable } from './PageView.jsx';
-import ImageViewer from './ImageViewer.jsx';
 import ReferencesBadge from './ReferencesBadge.jsx';
 import { tagColour } from '../tags.js';
-
-// The kinds of item that link to a page. Their type badge is the link. Notes have no badge.
-const LINKED_TYPES = ['webpage', 'pdf', 'image', 'video'];
 
 // The largest title size that fits a box with room to spare, from a rough count of the characters that fit on a line.
 // Bold letters are wide, words break early, and the box keeps a margin, so the estimate is cautious.
@@ -75,12 +71,10 @@ export default function GraphNode({ id, data, selected }) {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [round, circle, compact, node.title, node.commentary, node.type]);
-  const linked = Boolean(node.url) && LINKED_TYPES.includes(node.type);
-  // Images and videos show a picture on top and their text below, like the tiles of a media app.
-  const isMedia = node.type === 'image' || node.type === 'video';
-  const mediaSrc =
-    node.type === 'image' ? node.url : node.thumbnail_url || (node.url && youtubeThumbUrl(node.url)) || null;
+  }, [round, circle, compact, node.title, node.commentary, node.url, node.references]);
+  // A tile has one list of links. If one of them is an image or a video, the first of these is shown on top of the tile.
+  const links = linksOf(node);
+  const media = mediaOf(node);
 
   // A tile the user has resized has a stored size; otherwise it sizes itself.
   const sized = node.width != null;
@@ -134,7 +128,7 @@ export default function GraphNode({ id, data, selected }) {
       : { '--node-frame': tint, '--node-frame-w': '4px' };
 
   return (
-    <div className={className} data-type={node.type} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
+    <div className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
       <SideHandles />
 
       <NodeTools label={node.title} onEdit={() => actions.edit(id)} onRemove={() => actions.remove(id)} />
@@ -151,30 +145,23 @@ export default function GraphNode({ id, data, selected }) {
       />
 
       <div className="tile-content" ref={contentRef}>
-        {!compact && isMedia && (
+        {!compact && media && (
           <div className="thumb-media fade" style={{ opacity: fadeExtras }}>
-            {mediaSrc ? (
-              <img src={mediaSrc} alt="" loading="lazy" referrerPolicy="no-referrer" onError={hideOnError} />
+            {media.src ? (
+              <img src={media.src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={hideOnError} />
             ) : (
-              <span className="thumb-placeholder">{node.type === 'video' ? '▶ Video' : 'Image'}</span>
+              <span className="thumb-placeholder">{media.kind === 'video' ? '▶ Video' : 'Image'}</span>
             )}
           </div>
         )}
 
-        {!compact && !isMedia && node.thumbnail_url && (
+        {!compact && !media && node.thumbnail_url && (
           <img className="node-thumb fade" style={{ opacity: fadeExtras }} src={node.thumbnail_url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={hideOnError} />
         )}
 
-        {!compact && node.type !== 'note' && (
+        {!compact && node.favicon_url && (
           <div className="node-head fade" style={{ opacity: fadeExtras }}>
-            {node.favicon_url && (
-              <img className="node-favicon" src={node.favicon_url} alt="" referrerPolicy="no-referrer" onError={hideOnError} />
-            )}
-            {linked ? (
-              <PageBadge url={node.url} type={node.type} title={node.title} />
-            ) : (
-              <span className="type-badge">{node.type}</span>
-            )}
+            <img className="node-favicon" src={node.favicon_url} alt="" referrerPolicy="no-referrer" onError={hideOnError} />
           </div>
         )}
 
@@ -205,90 +192,13 @@ export default function GraphNode({ id, data, selected }) {
           </div>
         )}
 
-        {!compact && node.references?.length > 0 && (
+        {!compact && links.length > 0 && (
           <div className="node-refs fade" style={{ opacity: fadeExtras }}>
-            <ReferencesBadge references={node.references} />
+            <ReferencesBadge references={links} />
           </div>
         )}
       </div>
 
     </div>
-  );
-}
-
-/**
- * The type badge of a linked tile (WEBPAGE, PDF, IMAGE). Clicking it opens the page in a new tab. Hovering it
- * shows the page above the tile: an iframe, or the picture for an image. The page hides when the pointer leaves
- * the badge and what it reveals.
- */
-function PageBadge({ url, type, title }) {
-  const [shown, setShown] = useState(false);
-  const closing = useRef(null);
-  useEffect(() => () => clearTimeout(closing.current), []);
-  // The window opens level with its link. Only when it would be cut off by the top or bottom of the screen is it
-  // moved up or down, just enough to stay in view. offsetTop is that place, relative to the link, in canvas units.
-  const windowRef = useRef(null);
-  const [offsetTop, setOffsetTop] = useState(null);
-  // A page that does not allow framing gets no window: its type badge is the way to it.
-  const framable = useFramable(type === 'image' ? null : url);
-  useLayoutEffect(() => {
-    const el = windowRef.current;
-    if (!shown || !el) {
-      setOffsetTop(null);
-      return;
-    }
-    const tileEl = el.closest('.react-flow__node');
-    const link = el.offsetParent?.getBoundingClientRect();
-    if (!tileEl || !link) return;
-    const tile = tileEl.getBoundingClientRect();
-    const box = el.getBoundingClientRect();
-    const zoom = tile.width / tileEl.offsetWidth || 1;
-    const margin = 8;
-    const top = Math.min(Math.max(link.top, margin), window.innerHeight - box.height - margin);
-    setOffsetTop((top - link.top) / zoom);
-  }, [shown, framable]);
-  const placed = offsetTop === null ? undefined : { top: offsetTop };
-  // The window closes a moment after the pointer leaves, so the pointer can cross the gap to it.
-  const open = () => {
-    clearTimeout(closing.current);
-    setShown(true);
-  };
-  const close = () => {
-    closing.current = setTimeout(() => setShown(false), 400);
-  };
-  return (
-    <span className="page-badge nodrag" onMouseEnter={open} onMouseLeave={close}>
-      <a
-        className="type-badge type-link"
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {type}
-      </a>
-      {shown && type !== 'image' && framable === false && (
-        <a
-          className="page-open-float nowheel"
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(event) => event.stopPropagation()}
-        >
-          Read on {hostFromUrl(url)} ↗
-        </a>
-      )}
-
-      {shown && (type === 'image' || framable === true) && (
-        <div ref={windowRef} className="page-window nowheel" style={placed}>
-          <div className="page-window-bar">{title}</div>
-          {type === 'image' ? (
-            <ImageViewer src={url} alt={title} />
-          ) : (
-            <PageView url={url} title={title} className="page-window-frame" />
-          )}
-        </div>
-      )}
-    </span>
   );
 }

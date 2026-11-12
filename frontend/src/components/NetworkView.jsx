@@ -57,7 +57,7 @@ const CLOSE_DELAY = 300;
 const CARD_WIDTH = 380;
 const CARD_MAX_HEIGHT = 460; // matches .node-card max-height in styles.css
 // The title a new item gets when it is placed. Its details are added afterwards, from its edit icon.
-const PLACEHOLDER_TITLE = { webpage: 'New web page', pdf: 'New PDF', image: 'New image', video: 'New video', note: 'New note', text: 'Text', shape: 'Shape' };
+const PLACEHOLDER_TITLE = { note: 'New tile', text: 'Text', shape: 'Shape' };
 const CARD_GAP = 12;
 
 /** Where the card goes: beside the node, on the right, or on the left when there is no room. */
@@ -108,7 +108,6 @@ function sidesBetween(from, to) {
 function PlacePreview({ type, at, zoom }) {
   return (
     <div className="place-preview" style={{ left: at.x - 115 * zoom, top: at.y - 40 * zoom, transform: `scale(${zoom})` }}>
-      {type !== 'note' && <span className="type-badge">{type}</span>}
       <div className="place-preview-title">{PLACEHOLDER_TITLE[type]}</div>
     </div>
   );
@@ -494,7 +493,7 @@ function Board({ networkId, user, onLogout }) {
     const hit = (value) => value && value.toLowerCase().includes(q);
     return new Set(
       rfNodes
-        .filter(({ data: { node } }) => hit(node.title) || hit(node.url) || hit(node.commentary) || (node.tags || []).some(hit))
+        .filter(({ data: { node } }) => hit(node.title) || hit(node.url) || (node.references || []).some((r) => hit(r.url) || hit(r.title)) || hit(node.commentary) || (node.tags || []).some(hit))
         .map((n) => n.id)
     );
   }, [query, rfNodes]);
@@ -716,36 +715,43 @@ function Board({ networkId, user, onLogout }) {
     const shown = edges
       .filter((e) => filter === 'ALL' || e.relationship === filter)
       .filter((e) => !shownIds || (shownIds.has(e.source_id) && shownIds.has(e.target_id)));
-    // Links that join the same two items, in either direction, are fanned out so none hides another.
+    // Every relationship between the same two items (in either direction) is drawn as one line. The line takes its shape,
+    // colour and arrows from the oldest of them; each relationship is written on its own line of the label.
     const groups = new Map();
     for (const e of shown) {
       const key = e.source_id < e.target_id ? `${e.source_id}|${e.target_id}` : `${e.target_id}|${e.source_id}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(e);
     }
-    const fanOf = (e) => {
-      const key = e.source_id < e.target_id ? `${e.source_id}|${e.target_id}` : `${e.target_id}|${e.source_id}`;
-      const group = groups.get(key);
-      if (group.length < 2) return 0;
-      const spread = (group.indexOf(e) - (group.length - 1) / 2) * 48;
-      // The sideways direction follows each link's own direction, so the sign is set from one fixed end.
-      return e.source_id < e.target_id ? spread : -spread;
-    };
-    return shown.map((e) => {
-          // The link's own colour and weight. The default line is used where none is set.
-          const tagTint = tagMode !== 'off' && e.tags?.length > 0 ? tagColour(e.tags[0], tagColours) : null;
-          const stroke = tagTint || e.style?.stroke || EDGE_COLOR;
-          const width = e.style?.width || 2.5;
-          return {
+    return [...groups.values()].map((group) => {
+      const first = group[0];
+      // The line's own colour and weight. The default line is used where none is set.
+      const tagTint = tagMode !== 'off' && first.tags?.length > 0 ? tagColour(first.tags[0], tagColours) : null;
+      const stroke = tagTint || first.style?.stroke || EDGE_COLOR;
+      const width = first.style?.width || 2.5;
+      return {
+        id: first.id,
+        source: first.source_id,
+        target: first.target_id,
+        ...sidesBetween(centres.get(first.source_id), centres.get(first.target_id)),
+        type: 'bend',
+        data: {
+          lines: group.map((e) => ({
             id: e.id,
-            source: e.source_id,
-            target: e.target_id,
-            ...sidesBetween(centres.get(e.source_id), centres.get(e.target_id)),
-            type: 'bend',
-            data: { label: e.relationship.replace(/_/g, ' ').toLowerCase(), pts: ptsOf(e.style), active: edgeCard?.id === e.id, twoWay: Boolean(e.is_bidirectional), fan: fanOf(e), tags: e.tags || [], tagColours, actions: edgeActions },
-            style: { stroke, strokeWidth: width },
-            className: 'graph-edge',
-          };
+            text: e.relationship.replace(/_/g, ' ').toLowerCase(),
+            // Written the other way round from the line's own direction, so it gets a mark.
+            reversed: e.source_id !== first.source_id,
+            tags: e.tags || [],
+          })),
+          pts: ptsOf(first.style),
+          active: group.some((e) => edgeCard?.id === e.id),
+          twoWay: group.some((e) => e.is_bidirectional),
+          tagColours,
+          actions: edgeActions,
+        },
+        style: { stroke, strokeWidth: width },
+        className: 'graph-edge',
+      };
     });
   }, [edges, filter, shownIds, centres, edgeActions, tagColours, tagMode, edgeCard]);
 

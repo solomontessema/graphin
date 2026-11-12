@@ -8,7 +8,7 @@ Graphin runs as a web app (PHP + MariaDB) and as a free Windows desktop app (the
 
 ## What it does
 
-- **Tiles on a canvas.** Web pages, PDFs, images, videos, notes, labels and shapes. Drag, resize, restyle and group them.
+- **Tiles on a canvas.** One kind of tile: a title, notes, tags, and any number of links to pages, images, videos and PDFs (the first picture or video shows on the tile). Plus free-text labels and shapes. Drag, resize, restyle and group them.
 - **Typed relationships.** Link two tiles with a standard relationship (supports, contradicts, causes, leads to and others) or your own. Two tiles can be joined by any number of links, as long as each has a different relationship; they are drawn side by side.
 - **Editable curves.** Links curve smoothly. Drag a label to bend a line, double-click the line to add more points, and shape it concave and convex. Double-click the label to straighten it.
 - **Tags and colour coding.** Tag tiles and links, filter by tag, and colour the whole graph by tag (border or fill).

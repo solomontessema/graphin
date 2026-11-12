@@ -11,6 +11,10 @@ return [
     'DB_USER' => 'CHANGE_ME',
     'DB_PASS' => 'CHANGE_ME',
     'DB_CHARSET' => 'utf8mb4',
+    // Optional. The address of this copy, for the links in emails (leave out to use the address it is served from).
+    // 'APP_URL' => 'https://graphin.org/graphin',
+    // Email is sent by PHP's mail() unless MAIL_DRIVER is 'log'. MAIL_FROM is the sender address shown in emails.
+    // 'MAIL_FROM' => 'no-reply@graphin.org',
     // Set to 'true' only while fixing a problem: it shows error details in API responses.
     'APP_DEBUG' => 'false',
 ];

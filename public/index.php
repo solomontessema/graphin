@@ -17,8 +17,10 @@ $root = is_dir(__DIR__ . '/app') ? __DIR__ . '/app' : dirname(__DIR__);
 
 require $root . '/vendor/autoload.php';
 
+use Graphin\Accounts;
 use Graphin\ApiException;
 use Graphin\Auth;
+use Graphin\Controllers\AccountController;
 use Graphin\Controllers\AuthController;
 use Graphin\Controllers\EdgeController;
 use Graphin\Controllers\NetworkController;
@@ -49,7 +51,7 @@ if (is_file($root . '/config.local.php')) {
         $env = array_merge($env, array_map('strval', $local));
     }
 }
-foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET', 'AUTH_REQUIRED'] as $key) {
+foreach (['APP_DEBUG', 'DB_DRIVER', 'DB_PATH', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_CHARSET', 'AUTH_REQUIRED', 'APP_URL', 'MAIL_DRIVER', 'MAIL_FROM'] as $key) {
     $value = getenv($key);
     if ($value !== false) {
         $env[$key] = $value;
@@ -63,6 +65,10 @@ $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 $folder = rtrim(str_replace('\\', '/', dirname($script)), '/');
 $base = str_starts_with($requested, $script) ? $script : $folder;
 $appPath = static fn (string $path): string => $base !== '' && str_starts_with($path, $base) ? (substr($path, strlen($base)) ?: '/') : $path;
+
+// The links in emails point back to this app. APP_URL in the settings wins; otherwise the address this copy is served from.
+$siteUrl = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $folder;
+Accounts::configure($env, $siteUrl, $root);
 
 $db = new Database([
     'driver' => $env['DB_DRIVER'] ?? 'mysql',
@@ -170,6 +176,10 @@ $app->get('/api/auth/me', [new AuthController($db), 'me']);
 $app->post('/api/auth/register', [new AuthController($db), 'register']);
 $app->post('/api/auth/login', [new AuthController($db), 'login']);
 $app->post('/api/auth/logout', [new AuthController($db), 'logout']);
+$app->post('/api/auth/verify', [new AccountController($db), 'verify']);
+$app->post('/api/auth/resend-verification', [new AccountController($db), 'resendVerification']);
+$app->post('/api/auth/forgot-password', [new AccountController($db), 'forgotPassword']);
+$app->post('/api/auth/reset-password', [new AccountController($db), 'resetPassword']);
 
 $app->get('/api/networks', [new NetworkController($db), 'index']);
 $app->post('/api/networks', [new NetworkController($db), 'store']);

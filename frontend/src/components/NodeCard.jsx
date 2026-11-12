@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import { referenceName } from './ReferencesBadge.jsx';
+import { KIND_LABEL, kindOf, linksOf, mediaOf } from '../links.js';
 import { tagColour } from '../tags.js';
-import PageView, { useFramable } from './PageView.jsx';
 import StyleEditor from './StyleEditor.jsx';
 import TagEditor from './TagEditor.jsx';
 
@@ -34,15 +34,15 @@ export default function NodeCard({
     <div className="node-card" style={style} role="dialog" aria-label={node.title} onMouseEnter={onEnter} onMouseLeave={onLeave}>
       <header className="card-header">
         <div className="card-title">
-          <span className="type-badge">{node.type}</span>
+          {(node.type === 'text' || node.type === 'shape') && <span className="type-badge">{node.type === 'text' ? 'label' : 'shape'}</span>}
           <strong title={node.title}>{node.title}</strong>
         </div>
         <div className="card-actions">
           <button className="ghost small" onClick={() => onMode(mode === 'edit' ? 'preview' : 'edit')}>
             {mode === 'edit' ? 'Preview' : 'Edit'}
           </button>
-          {node.url && (
-            <a href={node.url} target="_blank" rel="noreferrer">
+          {linksOf(node)[0] && (
+            <a href={linksOf(node)[0].url} target="_blank" rel="noreferrer">
               Open ↗
             </a>
           )}
@@ -74,10 +74,9 @@ export default function NodeCard({
 }
 
 function PreviewBody({ node, tagColours }) {
-  // The page is shown only while the pointer is on its link at the top of the commentary, or inside what it reveals.
-  const [framed, setFramed] = useState(false);
-  const webPage = node.url && node.type !== 'image';
-  const framable = useFramable(webPage ? node.url : null);
+  // The first image or video is shown at the top; every link is listed below, whatever it points to.
+  const media = mediaOf(node);
+  const links = linksOf(node);
 
   return (
     <div className="card-body preview-body">
@@ -91,29 +90,21 @@ function PreviewBody({ node, tagColours }) {
         </p>
       )}
 
-      {node.url && node.type === 'image' && <img className="preview-image" src={node.url} alt={node.title} />}
+      {media?.src && <img className="preview-image" src={media.src} alt={node.title} referrerPolicy="no-referrer" />}
 
-      {node.references?.length > 0 && (
+      {links.length > 0 && (
         <div className="ref-links">
-          <h3>References</h3>
+          <h3>External References</h3>
           <ul>
-            {node.references.map((reference, i) => (
-              <li key={`${i}-${reference.url}`}>
-                <a href={reference.url} target="_blank" rel="noreferrer" title={reference.url}>
-                  {referenceName(reference)} ↗
+            {links.map((link, i) => (
+              <li key={`${i}-${link.url}`}>
+                <span className="ref-kind">{KIND_LABEL[kindOf(link.url)]}</span>{' '}
+                <a href={link.url} target="_blank" rel="noreferrer" title={link.url}>
+                  {referenceName(link)} ↗
                 </a>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {webPage && (
-        <div className="web-reveal" onMouseLeave={() => setFramed(false)}>
-          <a className="web-link" href={node.url} target="_blank" rel="noreferrer" onMouseEnter={() => setFramed(true)}>
-            ↗ {hostFromUrl(node.url)}
-          </a>
-          {framed && framable === true && <PageView url={node.url} title={node.title} className="preview-frame" />}
         </div>
       )}
     </div>
@@ -122,7 +113,6 @@ function PreviewBody({ node, tagColours }) {
 
 function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, onOpenNode, onShape, allTags, tagColours }) {
   const [title, setTitle] = useState(node.title);
-  const [url, setUrl] = useState(node.url || '');
   const [commentary, setCommentary] = useState(node.commentary || '');
   const [time, setTime] = useState(node.time || '');
   const [latitude, setLatitude] = useState(node.latitude ?? '');
@@ -142,7 +132,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
 
   useEffect(() => {
     setSaved(false);
-  }, [title, url, commentary, time, latitude, longitude, country]);
+  }, [title, commentary, time, latitude, longitude, country]);
 
   async function save(event) {
     event.preventDefault();
@@ -150,7 +140,6 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
     try {
       const updated = await api.updateNode(node.id, {
         title,
-        url: url.trim() || null,
         commentary: commentary.trim() || null,
         time: time.trim() || null,
         latitude: latitude === '' ? null : Number(latitude),
@@ -174,11 +163,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} required />
         </label>
         <label>
-          Link
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" maxLength={2048} />
-        </label>
-        <label>
-          Commentary
+          Notes
           <textarea value={commentary} onChange={(e) => setCommentary(e.target.value)} rows={5} maxLength={20000} />
         </label>
         <h3>When and where</h3>
@@ -214,7 +199,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
         <div className="form-row">
           <button type="submit">{saved ? 'Saved' : 'Save'}</button>
           <button type="button" className="danger" onClick={() => onDelete(node)}>
-            Delete link
+            Delete tile
           </button>
         </div>
       </form>
@@ -228,7 +213,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
             colours={tagColours}
             onChange={async (tags) => onChange(await api.updateNode(node.id, { tags }))}
           />
-          <ReferencesEditor node={node} onChange={onChange} />
+          <LinksEditor node={node} onChange={onChange} />
         </>
       )}
 
@@ -286,11 +271,12 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
 }
 
 /**
- * The references of a tile: any number of extra pages on its topic. Paste one or more links, one to a line (a title can
- * be given when adding a single link), and they are saved at once. Each can be removed.
+ * The links of a tile: any number of web pages, pictures, videos and PDFs. Paste one or more links, one to a line (a title can
+ * be given when adding a single link), and they are saved at once. Each can be removed. A tile's older single "url" is
+ * folded into this list the first time it is saved.
  */
-function ReferencesEditor({ node, onChange }) {
-  const references = node.references || [];
+function LinksEditor({ node, onChange }) {
+  const references = linksOf(node);
   const [links, setLinks] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
@@ -298,7 +284,7 @@ function ReferencesEditor({ node, onChange }) {
   async function save(next) {
     setError('');
     try {
-      onChange(await api.updateNode(node.id, { references: next }));
+      onChange(await api.updateNode(node.id, { references: next, url: null }));
       return true;
     } catch (e) {
       setError(e.message);
@@ -327,13 +313,13 @@ function ReferencesEditor({ node, onChange }) {
 
   return (
     <>
-      <h3>References{references.length > 0 && <span className="muted"> ({references.length})</span>}</h3>
-      <p className="muted small">More pages on this topic. Hover the References badge on the tile to read them.</p>
+      <h3>External References{references.length > 0 && <span className="muted"> ({references.length})</span>}</h3>
       {references.length > 0 && (
         <ul className="relation-list ref-edit-list">
           {references.map((reference, i) => (
             <li key={`${i}-${reference.url}`}>
               <span className="relation-text">
+                <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span>{' '}
                 <a href={reference.url} target="_blank" rel="noreferrer" title={reference.url}>
                   {referenceName(reference)}
                 </a>
@@ -352,7 +338,7 @@ function ReferencesEditor({ node, onChange }) {
       )}
       <form className="details-form ref-add" onSubmit={add}>
         <label>
-          Add links
+          Add references
           <textarea value={links} onChange={(e) => setLinks(e.target.value)} rows={2} placeholder="https://… (one link per line)" />
         </label>
         <label>

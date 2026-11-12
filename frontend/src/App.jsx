@@ -4,11 +4,18 @@ import NetworkList from './components/NetworkList.jsx';
 import NetworkView from './components/NetworkView.jsx';
 import CapturePage from './components/CapturePage.jsx';
 import Landing from './components/Landing.jsx';
+import AccountLink from './components/AccountLink.jsx';
 
 /** The network id from the hash, as in #/networks/{id}. */
 function readNetworkId() {
   const match = window.location.hash.match(/^#\/networks\/(.+)$/);
   return match ? match[1] : null;
+}
+
+/** The link from an email, as in #/verify?token=… or #/reset?token=…: { kind, token }, or null. */
+function readAccountLink() {
+  const match = window.location.hash.match(/^#\/(verify|reset)\?token=([a-f0-9]{64})$/);
+  return match ? { kind: match[1], token: match[2] } : null;
 }
 
 // The bookmarklet opens the capture form in a small window: at /capture on its own server, or as index.html?capture=1
@@ -19,12 +26,30 @@ export default function App() {
   const [networkId, setNetworkId] = useState(readNetworkId);
   // Who is signed in: null while we ask the server, then { mode, user }. mode "local" means no accounts (the desktop app).
   const [auth, setAuth] = useState(null);
+  // A link from an email that is being handled (confirm an address, or choose a new password).
+  const [accountLink, setAccountLink] = useState(readAccountLink);
+  // A message for the sign-in page, such as "your password has been changed".
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    const onHashChange = () => setNetworkId(readNetworkId());
+    const onHashChange = () => {
+      setNetworkId(readNetworkId());
+      setAccountLink(readAccountLink());
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  function leaveAccountLink(message = '') {
+    setNotice(typeof message === 'string' ? message : '');
+    setAccountLink(null);
+    window.location.hash = '';
+  }
+
+  function signedInFromLink(user) {
+    setAuth({ mode: 'accounts', user });
+    leaveAccountLink();
+  }
 
   useEffect(() => {
     api
@@ -46,6 +71,9 @@ export default function App() {
   if (auth === null) {
     return <div className="boot" aria-busy="true" />;
   }
+  if (accountLink) {
+    return <AccountLink kind={accountLink.kind} token={accountLink.token} onSignedIn={signedInFromLink} onBack={leaveAccountLink} />;
+  }
   if (auth.mode === 'accounts' && !auth.user) {
     // The bookmarklet window has no room for a landing page: it asks to sign in first.
     if (isCapturePage()) {
@@ -59,7 +87,7 @@ export default function App() {
         </main>
       );
     }
-    return <Landing onAuth={setAuth} />;
+    return <Landing onAuth={setAuth} notice={notice} />;
   }
 
   // The bookmarklet opens /capture in a small window. It is a separate page, not a canvas view.

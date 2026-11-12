@@ -13,8 +13,22 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(254) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
+  `email_verified_at` datetime(3) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_users_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `account_tokens` (
+  `id` char(36) NOT NULL,
+  `user_id` char(36) NOT NULL,
+  `purpose` varchar(10) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `created_at` datetime(3) NOT NULL,
+  `expires_at` datetime(3) NOT NULL,
+  `used_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_account_tokens_hash` (`token_hash`),
+  KEY `idx_account_tokens_user` (`user_id`, `purpose`),
+  CONSTRAINT `fk_account_tokens_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `networks` (
   `id` char(36) NOT NULL,

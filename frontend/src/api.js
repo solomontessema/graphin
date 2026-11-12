@@ -19,7 +19,10 @@ async function request(method, path, body) {
     window.dispatchEvent(new Event('graphin:unauthorized'));
   }
   if (!response.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    // The status tells the sign-in page why it failed, for example an address that is not confirmed yet (403).
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -29,6 +32,10 @@ export const api = {
   register: (email, password) => request('POST', '/auth/register', { email, password }),
   login: (email, password) => request('POST', '/auth/login', { email, password }),
   logout: () => request('POST', '/auth/logout'),
+  verify: (token) => request('POST', '/auth/verify', { token }),
+  resendVerification: (email) => request('POST', '/auth/resend-verification', { email }),
+  forgotPassword: (email) => request('POST', '/auth/forgot-password', { email }),
+  resetPassword: (token, password) => request('POST', '/auth/reset-password', { token, password }),
   networks: () => request('GET', '/networks'),
   createNetwork: (name) => request('POST', '/networks', { name }),
   editNetwork: (id, fields) => request('PUT', `/networks/${id}`, fields),

@@ -101,3 +101,21 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB;
 ALTER TABLE networks ADD COLUMN IF NOT EXISTS user_id CHAR(36) NULL;
 ALTER TABLE networks ADD KEY IF NOT EXISTS idx_networks_user (user_id);
+
+-- When the email address was confirmed. Accounts cannot log in until it is set.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at DATETIME(3) NULL;
+
+-- One-time links sent by email: 'verify' confirms a new address, 'reset' sets a new password. Only a SHA-256
+-- hash of the token is stored, so a copy of this table cannot be used to sign in. Times are UTC.
+CREATE TABLE IF NOT EXISTS account_tokens (
+    id          CHAR(36)    NOT NULL PRIMARY KEY,
+    user_id     CHAR(36)    NOT NULL,
+    purpose     VARCHAR(10) NOT NULL,
+    token_hash  CHAR(64)    NOT NULL,
+    created_at  DATETIME(3) NOT NULL,
+    expires_at  DATETIME(3) NOT NULL,
+    used_at     DATETIME(3) NULL,
+    UNIQUE KEY uq_account_tokens_hash (token_hash),
+    KEY idx_account_tokens_user (user_id, purpose),
+    CONSTRAINT fk_account_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;

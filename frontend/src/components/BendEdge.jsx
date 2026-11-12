@@ -45,11 +45,14 @@ const pointOn = ([a, c1, c2, b], t) => {
  * further. Double-click the line to add a point there, and drag any point to move it. While the link's card is open (click its
  * label), its points show; double-click a point to remove it. Double-click the label to straighten the whole line.
  *
- * data: { label, pts, fan, active, tags, tagColours, actions: { move(id, pts), commit(id, pts), reset(id), click(event, id) } }
+ * Several relationships between the same two items share one line. Each is written on its own line of the label, and
+ * clicking a line opens that relationship's card.
+ *
+ * data: { lines: [{ id, text, reversed, tags }], pts, active, twoWay, tagColours, actions: { move(id, pts), commit(id, pts), reset(id), click(event, id) } }
  */
 export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data }) {
   const { screenToFlowPosition } = useReactFlow();
-  const { label, pts: saved = [], fan = 0, active = false, actions, tags = [], tagColours, twoWay = false } = data;
+  const { lines = [], pts: saved = [], active = false, actions, twoWay = false, tagColours } = data;
   const drag = useRef(null);
   const dragged = useRef(false);
   const pathRef = useRef(null);
@@ -60,13 +63,7 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
   const target = { x: targetX, y: targetY };
 
   // The points the line passes through. Links that share the same two items are spread apart with a point of their own.
-  let offsets = saved;
-  if (offsets.length === 0 && fan !== 0) {
-    const dx = targetX - sourceX;
-    const dy = targetY - sourceY;
-    const length = Math.hypot(dx, dy) || 1;
-    offsets = [[(-dy / length) * fan, (dx / length) * fan]];
-  }
+  const offsets = saved;
   const mids = offsets.map(([x, y]) => ({ x: middle.x + x, y: middle.y + y }));
   const bent = mids.length > 0;
 
@@ -178,12 +175,13 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
       dragged.current = false;
       return;
     }
-    // The second click of a double-click straightens the line; a single click opens the link's card.
+    // The second click of a double-click straightens the line; a single click opens the card of the relationship clicked.
     if (event.detail >= 2) {
       if (saved.length > 0 || bent) actions.reset(id);
       return;
     }
-    actions.click(event, id);
+    const line = event.target.closest?.('[data-line-id]');
+    actions.click(event, line ? line.dataset.lineId : lines[0]?.id ?? id);
   }
 
   // A double-click on the line adds a point where it was clicked, in the stretch of the line it was clicked on.
@@ -245,16 +243,21 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
           onPointerCancel={onUp}
           onClick={onLabelClick}
         >
-          {label}
-          {tags.length > 0 && (
-            <span className="edge-label-tags">
-              {tags.map((tag) => (
-                <span key={tag} className="tag-chip" style={{ '--tag': tagColour(tag, tagColours) }}>
-                  {tag}
+          {lines.map((line) => (
+            <span key={line.id} className="edge-label-line" data-line-id={line.id}>
+              {line.reversed && '← '}
+              {line.text}
+              {line.tags.length > 0 && (
+                <span className="edge-label-tags">
+                  {line.tags.map((tag) => (
+                    <span key={tag} className="tag-chip" style={{ '--tag': tagColour(tag, tagColours) }}>
+                      {tag}
+                    </span>
+                  ))}
                 </span>
-              ))}
+              )}
             </span>
-          )}
+          ))}
         </div>
         {active &&
           mids.map((p, index) => (

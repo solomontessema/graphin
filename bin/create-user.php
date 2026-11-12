@@ -48,7 +48,8 @@ if ($existing) {
     echo "Updated the password of $email\n";
 } else {
     $id = Database::uuid();
-    $db->execute('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)', [$id, $email, $hash]);
+    // Made by hand here, so the address is trusted: no confirmation email is needed.
+    $db->execute('INSERT INTO users (id, email, password_hash, email_verified_at) VALUES (?, ?, ?, UTC_TIMESTAMP(3))', [$id, $email, $hash]);
     echo "Created $email\n";
 }
 if (in_array('--adopt', $argv, true)) {

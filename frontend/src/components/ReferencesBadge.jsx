@@ -1,15 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hostFromUrl } from '../utils.js';
+import { KIND_LABEL, kindOf } from '../links.js';
 import PageView, { useFramable } from './PageView.jsx';
 import ImageViewer from './ImageViewer.jsx';
 
-const isImage = (url) => /\.(png|jpe?g|gif|webp|svg|avif)(\?|#|$)/i.test(url);
+// The player address for a video link that can be shown in a frame, or null.
+function videoEmbed(url) {
+  const youtube = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/);
+  if (youtube) return `https://www.youtube.com/embed/${youtube[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return vimeo ? `https://player.vimeo.com/video/${vimeo[1]}` : null;
+}
 
 /** What a reference is called: the title it was given, or the site it is on. */
 export const referenceName = (reference) => reference.title || hostFromUrl(reference.url);
 
 /**
- * The references of a tile: any number of extra pages on its topic. Hovering the badge opens a window with the list on
+ * The links of a tile: any number of pages, pictures, videos and PDFs, all listed under a "References:" heading. Hovering the
+ * heading opens a window with the list on
  * the left; the reference under the pointer is shown on the right, in a frame where its site allows it. Clicking a
  * reference opens it in a new tab. The window closes shortly after the pointer leaves the badge and the window.
  */
@@ -51,13 +59,12 @@ export default function ReferencesBadge({ references }) {
   const current = references[Math.min(active, references.length - 1)];
 
   return (
-    <span className="page-badge ref-badge nodrag" onMouseEnter={open} onMouseLeave={close}>
-      <span className="type-badge ref-chip">
-        References · {references.length}
-      </span>
-      {shown && (
+    <div className="ref-block nodrag">
+      <span className="page-badge ref-badge" onMouseEnter={open} onMouseLeave={close}>
+        <span className="ref-heading">References:</span>
+        {shown && (
         <div ref={windowRef} className="page-window ref-window nowheel" style={shift ?? undefined}>
-          <div className="page-window-bar">References ({references.length})</div>
+          <div className="page-window-bar">External References ({references.length})</div>
           <div className="ref-body">
             <ul className="ref-list">
               {references.map((reference, i) => (
@@ -72,7 +79,7 @@ export default function ReferencesBadge({ references }) {
                     onFocus={() => setActive(i)}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    {referenceName(reference)}
+                    <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
                   </a>
                 </li>
               ))}
@@ -80,19 +87,33 @@ export default function ReferencesBadge({ references }) {
             <ReferencePreview reference={current} />
           </div>
         </div>
-      )}
-    </span>
+        )}
+      </span>
+      <ul className="tile-ref-list">
+        {references.map((reference, i) => (
+          <li key={`${i}-${reference.url}`}>
+            <a href={reference.url} target="_blank" rel="noreferrer" title={reference.url} onClick={(event) => event.stopPropagation()}>
+              <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
 /** One reference shown on the right of the window: a picture, a page in a frame, or a button when the page cannot be framed. */
 function ReferencePreview({ reference }) {
-  const image = isImage(reference.url);
-  const framable = useFramable(image ? null : reference.url);
+  const kind = kindOf(reference.url);
+  const image = kind === 'image';
+  const embed = kind === 'video' ? videoEmbed(reference.url) : null;
+  const framable = useFramable(image || embed ? null : reference.url);
   return (
     <div className="ref-preview">
       {image ? (
         <ImageViewer src={reference.url} alt={referenceName(reference)} />
+      ) : embed ? (
+        <iframe className="ref-video" src={embed} title={referenceName(reference)} allow="fullscreen; picture-in-picture" allowFullScreen />
       ) : framable === true ? (
         <PageView url={reference.url} title={referenceName(reference)} className="page-window-frame" />
       ) : (

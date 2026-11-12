@@ -78,30 +78,66 @@ function HeroGraphic() {
   );
 }
 
-/** The page people see before they sign in: what Graphin is, that it is free, and the sign-up and log-in form. */
-export default function Landing({ onAuth }) {
-  const [mode, setMode] = useState('register');
+/**
+ * The page people see before they sign in: what Graphin is, that it is free, and the forms to sign up, log in and reset
+ * a forgotten password. A new account must confirm its email address (the link is emailed) before it can log in.
+ * `notice` is a message to show on the log-in form, for example after a password was reset.
+ */
+export default function Landing({ onAuth, notice = '' }) {
+  // 'register', 'login', or 'forgot' (asks for a link to choose a new password).
+  const [mode, setMode] = useState(notice ? 'login' : 'register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState(notice);
   const [busy, setBusy] = useState(false);
+  // After signing up: the address the confirmation link was sent to.
+  const [awaiting, setAwaiting] = useState('');
+  // A log-in refused because the address is not confirmed yet.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const registering = mode === 'register';
 
   async function submit(event) {
     event.preventDefault();
     setError('');
+    setInfo('');
+    setUnconfirmed(false);
     setBusy(true);
     try {
-      onAuth(registering ? await api.register(email, password) : await api.login(email, password));
+      if (mode === 'forgot') {
+        setInfo((await api.forgotPassword(email)).message);
+      } else if (registering) {
+        const result = await api.register(email, password);
+        setAwaiting(result.email || email);
+        setPassword('');
+      } else {
+        onAuth(await api.login(email, password));
+      }
     } catch (e) {
       setError(e.message);
-      setBusy(false);
+      setUnconfirmed(mode === 'login' && e.status === 403);
     }
+    setBusy(false);
+  }
+
+  async function resend(address) {
+    setError('');
+    setInfo('');
+    setBusy(true);
+    try {
+      setInfo((await api.resendVerification(address)).message);
+    } catch (e) {
+      setError(e.message);
+    }
+    setBusy(false);
   }
 
   function show(next) {
     setMode(next);
     setError('');
+    setInfo('');
+    setUnconfirmed(false);
+    setAwaiting('');
     document.getElementById('join')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -132,53 +168,109 @@ export default function Landing({ onAuth }) {
           </ul>
         </div>
 
-        <form id="join" className="join-card" onSubmit={submit}>
-          <div className="join-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={registering} className={registering ? 'on' : ''} onClick={() => show('register')}>
-              Create free account
-            </button>
-            <button type="button" role="tab" aria-selected={!registering} className={!registering ? 'on' : ''} onClick={() => show('login')}>
-              Log in
-            </button>
-          </div>
-          <label>
-            Email (your username)
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" placeholder="you@example.com" required maxLength={254} />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={registering ? 'new-password' : 'current-password'}
-              placeholder={registering ? 'At least 8 characters' : 'Your password'}
-              required
-              maxLength={200}
-            />
-          </label>
-          {error && <p className="error" role="alert">{error}</p>}
-          <button type="submit" className="join-submit" disabled={busy}>
-            {busy ? 'One moment…' : registering ? 'Create my free account' : 'Log in'}
-          </button>
-          <p className="join-note">
-            {registering ? (
-              <>
-                Free to use. Already have an account?{' '}
-                <button type="button" className="link-button" onClick={() => show('login')}>
-                  Log in
-                </button>
-              </>
-            ) : (
-              <>
-                New to Graphin?{' '}
+        <div id="join" className="join-card">
+          {awaiting ? (
+            <>
+              <h2 className="join-title">Check your email</h2>
+              <p className="join-text">
+                We sent a link to <strong>{awaiting}</strong>. Open it to confirm your address and you will be signed in. The link works for 48 hours.
+              </p>
+              {info && <p className="join-note" role="status">{info}</p>}
+              {error && <p className="error" role="alert">{error}</p>}
+              <button type="button" className="join-submit" disabled={busy} onClick={() => resend(awaiting)}>
+                {busy ? 'One moment…' : 'Send a new link'}
+              </button>
+              <p className="join-note">
+                Wrong address?{' '}
                 <button type="button" className="link-button" onClick={() => show('register')}>
-                  Create a free account
+                  Start again
                 </button>
-              </>
-            )}
-          </p>
-        </form>
+              </p>
+            </>
+          ) : (
+            <form onSubmit={submit}>
+              {mode === 'forgot' ? (
+                <>
+                  <h2 className="join-title">Reset your password</h2>
+                  <p className="join-text">Enter the email address you signed up with. We will send a link to choose a new password.</p>
+                </>
+              ) : (
+                <div className="join-tabs" role="tablist">
+                  <button type="button" role="tab" aria-selected={registering} className={registering ? 'on' : ''} onClick={() => show('register')}>
+                    Create free account
+                  </button>
+                  <button type="button" role="tab" aria-selected={!registering} className={!registering ? 'on' : ''} onClick={() => show('login')}>
+                    Log in
+                  </button>
+                </div>
+              )}
+              <label>
+                Email (your username)
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" placeholder="you@example.com" required maxLength={254} />
+              </label>
+              {mode !== 'forgot' && (
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={registering ? 'new-password' : 'current-password'}
+                    placeholder={registering ? 'At least 8 characters' : 'Your password'}
+                    required
+                    maxLength={200}
+                  />
+                </label>
+              )}
+              {!registering && mode !== 'forgot' && (
+                <p className="join-note">
+                  <button type="button" className="link-button" onClick={() => show('forgot')}>
+                    Forgot password?
+                  </button>
+                </p>
+              )}
+              {info && <p className="join-note" role="status">{info}</p>}
+              {error && <p className="error" role="alert">{error}</p>}
+              {unconfirmed && (
+                <p className="join-note">
+                  <button type="button" className="link-button" disabled={busy} onClick={() => resend(email)}>
+                    Send me a new confirmation link
+                  </button>
+                </p>
+              )}
+              <button type="submit" className="join-submit" disabled={busy}>
+                {busy
+                  ? 'One moment…'
+                  : mode === 'forgot'
+                    ? 'Send reset link'
+                    : registering
+                      ? 'Create my free account'
+                      : 'Log in'}
+              </button>
+              <p className="join-note">
+                {mode === 'forgot' ? (
+                  <button type="button" className="link-button" onClick={() => show('login')}>
+                    Back to log in
+                  </button>
+                ) : registering ? (
+                  <>
+                    Free to use. Already have an account?{' '}
+                    <button type="button" className="link-button" onClick={() => show('login')}>
+                      Log in
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    New to Graphin?{' '}
+                    <button type="button" className="link-button" onClick={() => show('register')}>
+                      Create a free account
+                    </button>
+                  </>
+                )}
+              </p>
+            </form>
+          )}
+        </div>
       </header>
 
       <section className="landing-showcase">
