@@ -24,6 +24,8 @@ export const referenceName = (reference) => reference.title || hostFromUrl(refer
 export default function ReferencesBadge({ references }) {
   const [shown, setShown] = useState(false);
   const [active, setActive] = useState(0);
+  // The list of links on the left can be hidden to give the page more room. It stays as chosen while the window is open.
+  const [listHidden, setListHidden] = useState(false);
   const closing = useRef(null);
   useEffect(() => () => clearTimeout(closing.current), []);
 
@@ -60,39 +62,68 @@ export default function ReferencesBadge({ references }) {
 
   return (
     <div className="ref-block nodrag">
-      <span className="page-badge ref-badge" onMouseEnter={open} onMouseLeave={close}>
-        <span className="ref-heading">References:</span>
-        {shown && (
-        <div ref={windowRef} className="page-window ref-window nowheel" style={shift ?? undefined}>
-          <div className="page-window-bar">External References ({references.length})</div>
+      <span className="ref-heading">References:</span>
+      {shown && (
+        <div ref={windowRef} className="page-window ref-window nowheel" style={shift ?? undefined} onMouseEnter={open} onMouseLeave={close}>
+          <div className="page-window-bar">
+            External References ({references.length})
+            <button
+              type="button"
+              className="ref-toggle"
+              aria-expanded={!listHidden}
+              onClick={(event) => {
+                event.stopPropagation();
+                setListHidden((hidden) => !hidden);
+              }}
+            >
+              {listHidden ? 'Show list' : 'Hide list'}
+            </button>
+          </div>
           <div className="ref-body">
-            <ul className="ref-list">
-              {references.map((reference, i) => (
-                <li key={`${i}-${reference.url}`}>
-                  <a
-                    href={reference.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={i === active ? 'is-active' : undefined}
-                    title={reference.url}
-                    onMouseEnter={() => setActive(i)}
-                    onFocus={() => setActive(i)}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {!listHidden && (
+              <ul className="ref-list">
+                {references.map((reference, i) => (
+                  <li key={`${i}-${reference.url}`}>
+                    <a
+                      href={reference.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={i === active ? 'is-active' : undefined}
+                      title={reference.url}
+                      onMouseEnter={() => setActive(i)}
+                      onFocus={() => setActive(i)}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
             <ReferencePreview reference={current} />
           </div>
         </div>
-        )}
-      </span>
-      <ul className="tile-ref-list">
+      )}
+      {/* Only the links open the preview window, so hovering the rest of the tile does not. */}
+      <ul className="tile-ref-list" onMouseLeave={close}>
         {references.map((reference, i) => (
           <li key={`${i}-${reference.url}`}>
-            <a href={reference.url} target="_blank" rel="noreferrer" title={reference.url} onClick={(event) => event.stopPropagation()}>
+            <a
+              href={reference.url}
+              target="_blank"
+              rel="noreferrer"
+              title={reference.url}
+              onClick={(event) => event.stopPropagation()}
+              onMouseEnter={() => {
+                setActive(i);
+                open();
+              }}
+              onFocus={() => {
+                setActive(i);
+                open();
+              }}
+              onBlur={close}
+            >
               <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
             </a>
           </li>

@@ -1,6 +1,6 @@
 const ITEMS = [
   { type: 'note', label: 'Tile', hint: 'A card with a title, notes and any number of links to pages, pictures, videos and PDFs' },
-  { type: 'text', label: 'Label', hint: 'Text written straight on the canvas, with no box: headings and captions' },
+  { type: 'text', label: 'Text', hint: 'Text written straight on the canvas, with no box: headings and captions' },
   { type: 'shape', label: 'Shape', hint: 'Draw a shape behind tiles to organize them' },
 ];
 

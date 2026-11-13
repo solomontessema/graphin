@@ -121,6 +121,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [countryNames, setCountryNames] = useState([]);
+  const formId = `tile-details-${node.id}`;
   // The countries of the world map are offered as you type; any other name can still be written.
   useEffect(() => {
     let live = true;
@@ -157,7 +158,14 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
 
   return (
     <div className="card-body">
-      <form className="details-form" onSubmit={save}>
+      {/* Save stays at the top of the card, so it is in view however far the card is scrolled. */}
+      <div className="card-save-bar">
+        <button type="submit" form={formId}>
+          {saved ? 'Saved' : 'Save'}
+        </button>
+        {error && <span className="error">{error}</span>}
+      </div>
+      <form id={formId} className="details-form" onSubmit={save}>
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} required />
@@ -195,9 +203,7 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
             </datalist>
           </label>
         </div>
-        {error && <p className="error">{error}</p>}
         <div className="form-row">
-          <button type="submit">{saved ? 'Saved' : 'Save'}</button>
           <button type="button" className="danger" onClick={() => onDelete(node)}>
             Delete tile
           </button>
