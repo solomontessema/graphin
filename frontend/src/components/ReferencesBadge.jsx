@@ -15,17 +15,49 @@ function videoEmbed(url) {
 /** What a reference is called: the title it was given, or the site it is on. */
 export const referenceName = (reference) => reference.title || hostFromUrl(reference.url);
 
+/** A small icon for what a reference points to: a web page, a PDF, a video or a picture. Its name is the tooltip. */
+function KindIcon({ kind }) {
+  return (
+    <svg className="ref-icon" viewBox="0 0 16 16" role="img" aria-label={KIND_LABEL[kind]}>
+      <title>{KIND_LABEL[kind]}</title>
+      {kind === 'pdf' && (
+        <>
+          <path d="M4 1.5h5.5L13 5v9.5H4z" />
+          <path d="M9.5 1.5V5H13" />
+        </>
+      )}
+      {kind === 'video' && (
+        <>
+          <rect x="1.5" y="3" width="13" height="10" rx="2" />
+          <path d="M6.8 6.2v3.6l3.2-1.8z" fill="currentColor" />
+        </>
+      )}
+      {kind === 'image' && (
+        <>
+          <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
+          <circle cx="5.5" cy="6" r="1.2" />
+          <path d="M2 12.5l3.5-3.5 2.5 2.5 2-2 3.5 3.5" />
+        </>
+      )}
+      {kind === 'page' && (
+        <>
+          <circle cx="8" cy="8" r="6.5" />
+          <path d="M1.5 8h13M8 1.5c2 2.2 2 10.8 0 13M8 1.5c-2 2.2-2 10.8 0 13" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /**
- * The links of a tile: any number of pages, pictures, videos and PDFs, all listed under a "References:" heading. Hovering the
- * heading opens a window with the list on
- * the left; the reference under the pointer is shown on the right, in a frame where its site allows it. Clicking a
- * reference opens it in a new tab. The window closes shortly after the pointer leaves the badge and the window.
+ * The links of a tile: any number of pages, pictures, videos and PDFs, listed under a "References:" heading. Hovering a link
+ * opens a window that shows that link: a picture, a page in a frame where its site allows it, or a button to open it.
+ * The window has a close button, and it also closes shortly after the pointer leaves the link and the window.
+ * Clicking a link opens it in a new tab.
  */
 export default function ReferencesBadge({ references }) {
   const [shown, setShown] = useState(false);
   const [active, setActive] = useState(0);
-  // The list of links on the left can be hidden to give the page more room. It stays as chosen while the window is open.
-  const [listHidden, setListHidden] = useState(false);
   const closing = useRef(null);
   useEffect(() => () => clearTimeout(closing.current), []);
 
@@ -66,40 +98,21 @@ export default function ReferencesBadge({ references }) {
       {shown && (
         <div ref={windowRef} className="page-window ref-window nowheel" style={shift ?? undefined} onMouseEnter={open} onMouseLeave={close}>
           <div className="page-window-bar">
-            External References ({references.length})
+            <span className="ref-window-title">{referenceName(current)}</span>
             <button
               type="button"
               className="ref-toggle"
-              aria-expanded={!listHidden}
+              aria-label="Close preview"
               onClick={(event) => {
                 event.stopPropagation();
-                setListHidden((hidden) => !hidden);
+                clearTimeout(closing.current);
+                setShown(false);
               }}
             >
-              {listHidden ? 'Show list' : 'Hide list'}
+              ×
             </button>
           </div>
           <div className="ref-body">
-            {!listHidden && (
-              <ul className="ref-list">
-                {references.map((reference, i) => (
-                  <li key={`${i}-${reference.url}`}>
-                    <a
-                      href={reference.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={i === active ? 'is-active' : undefined}
-                      title={reference.url}
-                      onMouseEnter={() => setActive(i)}
-                      onFocus={() => setActive(i)}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
             <ReferencePreview reference={current} />
           </div>
         </div>
@@ -124,7 +137,8 @@ export default function ReferencesBadge({ references }) {
               }}
               onBlur={close}
             >
-              <span className="ref-kind">{KIND_LABEL[kindOf(reference.url)]}</span> {referenceName(reference)}
+              <KindIcon kind={kindOf(reference.url)} />
+              {referenceName(reference)}
             </a>
           </li>
         ))}
