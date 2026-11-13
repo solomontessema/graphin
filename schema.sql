@@ -104,6 +104,9 @@ ALTER TABLE networks ADD KEY IF NOT EXISTS idx_networks_user (user_id);
 
 -- When the email address was confirmed. Accounts cannot log in until it is set.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at DATETIME(3) NULL;
+-- The person's name, as typed at sign-up (NULL for accounts made before names were asked for).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100) NULL;
 
 -- One-time links sent by email: 'verify' confirms a new address, 'reset' sets a new password. Only a SHA-256
 -- hash of the token is stored, so a copy of this table cannot be used to sign in. Times are UTC.

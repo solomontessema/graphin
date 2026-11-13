@@ -84,8 +84,10 @@ function HeroGraphic() {
  * `notice` is a message to show on the log-in form, for example after a password was reset.
  */
 export default function Landing({ onAuth, notice = '' }) {
-  // 'register', 'login', or 'forgot' (asks for a link to choose a new password).
-  const [mode, setMode] = useState(notice ? 'login' : 'register');
+  // 'login' (the default), 'register' (sign-up), or 'forgot' (asks for a link to choose a new password).
+  const [mode, setMode] = useState('login');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -107,7 +109,7 @@ export default function Landing({ onAuth, notice = '' }) {
       if (mode === 'forgot') {
         setInfo((await api.forgotPassword(email)).message);
       } else if (registering) {
-        const result = await api.register(email, password);
+        const result = await api.register({ firstName: firstName.trim(), lastName: lastName.trim(), email, password });
         setAwaiting(result.email || email);
         setPassword('');
       } else {
@@ -202,6 +204,18 @@ export default function Landing({ onAuth, notice = '' }) {
                   <button type="button" role="tab" aria-selected={!registering} className={!registering ? 'on' : ''} onClick={() => show('login')}>
                     Log in
                   </button>
+                </div>
+              )}
+              {registering && (
+                <div className="name-row">
+                  <label>
+                    First name
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" required maxLength={100} />
+                  </label>
+                  <label>
+                    Last name
+                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" required maxLength={100} />
+                  </label>
                 </div>
               )}
               <label>

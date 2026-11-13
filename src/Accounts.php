@@ -21,6 +21,7 @@ final class Accounts
     public const PASSWORD_MIN = 8;
     private const PASSWORD_MAX = 200;
     private const EMAIL_MAX = 254;
+    private const NAME_MAX = 100;
     private const VERIFY_SECONDS = 60 * 60 * 48;
     private const RESET_SECONDS = 60 * 60;
     /** A new link is not sent again within this many seconds of the last one (stops mail flooding). */
@@ -53,6 +54,16 @@ final class Accounts
             throw new ApiException(422, 'Enter a valid email address. It is your username.');
         }
         return $email;
+    }
+
+    /** A first or last name given at sign-up, as typed (trimmed). @param array<string, mixed> $data */
+    public static function name(array $data, string $field): string
+    {
+        $name = trim((string) ($data[$field] ?? ''));
+        if ($name === '' || mb_strlen($name) > self::NAME_MAX) {
+            throw new ApiException(422, $field === 'first_name' ? 'Enter your first name.' : 'Enter your last name.');
+        }
+        return $name;
     }
 
     /** @param array<string, mixed> $data */

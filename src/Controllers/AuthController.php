@@ -40,13 +40,15 @@ final class AuthController extends BaseController
         $data = $this->body($request);
         $email = Accounts::email($data);
         $password = Accounts::password($data, true);
+        $firstName = Accounts::name($data, 'first_name');
+        $lastName = Accounts::name($data, 'last_name');
         if ($this->db->fetchOne('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
             throw new ApiException(409, 'An account with this email address already exists. Log in instead.');
         }
         $id = \Graphin\Database::uuid();
         $this->db->execute(
-            'INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)',
-            [$id, $email, password_hash($password, PASSWORD_DEFAULT)]
+            'INSERT INTO users (id, email, password_hash, first_name, last_name) VALUES (?, ?, ?, ?, ?)',
+            [$id, $email, password_hash($password, PASSWORD_DEFAULT), $firstName, $lastName]
         );
         Accounts::sendVerification($this->db, $id, $email);
         return $this->json($response, ['mode' => 'accounts', 'user' => null, 'pending_verification' => true, 'email' => $email], 201);

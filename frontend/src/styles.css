@@ -1846,3 +1846,6 @@ button.on {
 
 /* The preview window's title: the name of the link being shown. */
 .ref-window-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* First and last name side by side on the sign-up form. */
+.join-card .name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
