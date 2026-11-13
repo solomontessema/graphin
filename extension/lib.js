@@ -41,7 +41,11 @@ export async function api(address, method, path, body) {
       method,
       // Sends the Graphin sign-in cookie, so the extension acts as the person who is logged in to Graphin.
       credentials: 'include',
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+      // The second header marks the request as coming from Graphin's own tools; the server refuses changes without it.
+      headers: {
+        'X-Requested-With': 'graphin',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
