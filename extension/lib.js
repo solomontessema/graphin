@@ -1,17 +1,22 @@
 // Shared by the popup, the options page, and the background worker.
 
-// The two addresses Graphin runs on in development. Both are listed in manifest.json.
+// Where Graphin runs. The first is the live site (graphin.org, with the app and its API under index.php). The others
+// are for development and for the desktop app. All of them are listed in manifest.json.
 // The desktop app listens on 127.0.0.1:8765 (see desktop/src-tauri/src/main.rs).
-export const ADDRESSES = ['http://localhost:8100', 'http://localhost:5173', 'http://127.0.0.1:8765'];
+export const ADDRESSES = ['https://graphin.org/index.php', 'http://localhost:8100', 'http://localhost:5173', 'http://127.0.0.1:8765'];
 const DEFAULT_ADDRESS = ADDRESSES[0];
+// Bumped when the default changes, so a copy of the extension that saved an older choice (such as localhost) moves to the
+// new default once.
+const SETTINGS_VERSION = 2;
 
 export async function getAddress() {
-  const { address } = await chrome.storage.local.get('address');
+  const { address, settingsVersion } = await chrome.storage.local.get(['address', 'settingsVersion']);
+  if (settingsVersion !== SETTINGS_VERSION) return DEFAULT_ADDRESS;
   return ADDRESSES.includes(address) ? address : DEFAULT_ADDRESS;
 }
 
 export async function setAddress(address) {
-  await chrome.storage.local.set({ address });
+  await chrome.storage.local.set({ address, settingsVersion: SETTINGS_VERSION });
 }
 
 export async function getLastNetwork() {
@@ -23,12 +28,19 @@ export async function setLastNetwork(id) {
   await chrome.storage.local.set({ lastNetwork: id });
 }
 
+/** Who is signed in to Graphin at this address: {mode, user} where user is null when nobody is. */
+export function session(address) {
+  return api(address, 'GET', '/auth/me');
+}
+
 /** Calls the Graphin API. Throws with the server's message on failure. */
 export async function api(address, method, path, body) {
   let response;
   try {
     response = await fetch(address + '/api' + path, {
       method,
+      // Sends the Graphin sign-in cookie, so the extension acts as the person who is logged in to Graphin.
+      credentials: 'include',
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

@@ -1,4 +1,4 @@
-import { api, getAddress, getLastNetwork, pageInfo, setLastNetwork } from './lib.js';
+import { api, getAddress, getLastNetwork, pageInfo, session, setLastNetwork } from './lib.js';
 
 const el = {
   network: document.getElementById('network'),
@@ -40,6 +40,21 @@ async function init() {
     return;
   }
 
+  // Saving needs the person to be logged in to Graphin in this browser. Check that first, so the message says what to do.
+  let who;
+  try {
+    who = await session(address);
+  } catch (e) {
+    say(e.message, true);
+    return;
+  }
+  if (!who.user) {
+    el.network.innerHTML = '<option value="">Not logged in</option>';
+    say('You are not logged in to Graphin. Log in there, then open this again.', true);
+    openLink('Open Graphin', address);
+    return;
+  }
+
   try {
     networks = await api(address, 'GET', '/networks');
   } catch (e) {
@@ -60,7 +75,19 @@ async function init() {
   }
   el.network.disabled = false;
   el.save.disabled = false;
-  say('');
+  say(`Signed in as ${who.user.email}.`);
+}
+
+/** Adds a link to the status line that opens the address in a new tab. */
+function openLink(label, url) {
+  const link = document.createElement('a');
+  link.href = '#';
+  link.textContent = ` ${label}`;
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    chrome.tabs.create({ url });
+  });
+  el.status.append(link);
 }
 
 async function save(event) {

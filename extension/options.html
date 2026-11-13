@@ -31,11 +31,12 @@
   </head>
   <body>
     <h1>Graphin Save</h1>
-    <p class="muted">Choose where Graphin is running. Graphin must be started at this address for saving to work.</p>
+    <p class="muted">Choose where Graphin is running. Log in to Graphin at this address in the same browser, then saving will work.</p>
 
     <label>
       Graphin address
       <select id="address">
+        <option value="https://graphin.org/index.php">https://graphin.org (live site)</option>
         <option value="http://localhost:8100">http://localhost:8100 (built app or php server)</option>
         <option value="http://localhost:5173">http://localhost:5173 (npm run dev)</option>
         <option value="http://127.0.0.1:8765">http://127.0.0.1:8765 (Graphin desktop)</option>
