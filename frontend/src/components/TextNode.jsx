@@ -3,7 +3,7 @@ import { NodeResizer } from '@xyflow/react';
 import NodeTools from './NodeTools.jsx';
 import SideHandles from './SideHandles.jsx';
 import { useDoubleClick } from '../useDoubleClick.js';
-import TexText from './TexText.jsx';
+import RichText from './RichText.jsx';
 
 /**
  * A label: free text written straight on the canvas, without a box. Double-click to write; click away to save.
@@ -40,7 +40,7 @@ export default function TextNode({ id, data, selected }) {
       />
 
       {draft === null ? (
-        <div className="text-body">{text ? <TexText text={text} /> : <span className="muted">Double-click to write</span>}</div>
+        <div className="text-body">{text ? <RichText text={text} /> : <span className="muted">Double-click to write</span>}</div>
       ) : (
         <textarea
           className="text-input nodrag nowheel"

@@ -1866,3 +1866,17 @@ button.on {
 .focus-body .ref-list { flex-basis: 136px; }
 .focus-body .ref-preview { height: 100%; }
 .focus-body .ref-preview .page-window-frame { height: 100%; }
+
+/* Markdown in notes and labels. Spacing is kept tight so a tile stays compact. */
+.rich { line-height: inherit; }
+.rich > :first-child { margin-top: 0; }
+.rich > :last-child { margin-bottom: 0; }
+.rich p, .rich ul, .rich ol, .rich blockquote, .rich pre { margin: 0 0 0.4em; }
+.rich ul, .rich ol { padding-left: 1.2em; }
+.rich h1, .rich h2, .rich h3, .rich h4 { font-size: 1em; font-weight: 700; margin: 0.2em 0; }
+.rich blockquote { border-left: 3px solid var(--border); padding-left: 8px; color: var(--muted, #5b6472); }
+.rich code { font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; background: rgba(0, 0, 0, 0.06); padding: 0 3px; border-radius: 3px; }
+.rich pre { background: rgba(0, 0, 0, 0.06); padding: 6px 8px; border-radius: 4px; overflow: auto; }
+.rich pre code { background: none; padding: 0; }
+.rich a { color: #1d4ed8; text-decoration: underline; }
+.rich img { max-width: 100%; height: auto; }

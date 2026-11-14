@@ -6,6 +6,7 @@ import NodeTools from './NodeTools.jsx';
 import SideHandles from './SideHandles.jsx';
 import ReferencesBadge from './ReferencesBadge.jsx';
 import TexText from './TexText.jsx';
+import RichText from './RichText.jsx';
 import { tagColour } from '../tags.js';
 
 // The largest title size that fits a box with room to spare, from a rough count of the characters that fit on a line.
@@ -183,7 +184,7 @@ export default function GraphNode({ id, data, selected }) {
             className={`node-commentary fade${commentaryLines ? ' clamped' : ''}`}
             style={{ opacity: fadeCommentary, WebkitLineClamp: commentaryLines ?? undefined }}
           >
-            <TexText text={node.commentary} />
+            <RichText text={node.commentary} />
           </div>
         )}
 
