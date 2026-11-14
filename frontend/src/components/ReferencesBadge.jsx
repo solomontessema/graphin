@@ -113,7 +113,7 @@ export default function ReferencesBadge({ references }) {
             </button>
           </div>
           <div className="ref-body">
-            <ReferencePreview reference={current} />
+            <ReferenceViewer references={references} active={active} onPick={setActive} />
           </div>
         </div>
       )}
@@ -144,6 +144,38 @@ export default function ReferencesBadge({ references }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Every reference of a tile as a link in a narrow list on the left, and the one picked (by hovering or focusing its link)
+ * shown on the right. Used by the hover window and by the maximized view.
+ */
+export function ReferenceViewer({ references, active, onPick }) {
+  const current = references[Math.min(active, references.length - 1)];
+  return (
+    <>
+      <ul className="ref-list">
+        {references.map((reference, i) => (
+          <li key={`${i}-${reference.url}`}>
+            <a
+              href={reference.url}
+              target="_blank"
+              rel="noreferrer"
+              className={i === active ? 'is-active' : undefined}
+              title={reference.url}
+              onMouseEnter={() => onPick(i)}
+              onFocus={() => onPick(i)}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <KindIcon kind={kindOf(reference.url)} />
+              {referenceName(reference)}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <ReferencePreview reference={current} />
+    </>
   );
 }
 

@@ -1849,3 +1849,20 @@ button.on {
 
 /* First and last name side by side on the sign-up form. */
 .join-card .name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* The autosave status at the top of a tile's edit card. */
+.autosave { font-size: 13px; color: var(--muted, #5b6472); }
+.autosave-saved { color: #2e7d32; font-weight: 600; }
+.autosave-error { color: #b42318; }
+
+/* Maths written with $$...$$ sits on its own line. */
+.tex-display { display: block; text-align: center; margin: 0.3em 0; }
+
+/* The maximized view of a tile's references: it fills the canvas, in front of the tiles and the lines between them. */
+.focus-view { position: absolute; inset: 0; z-index: 900; display: flex; flex-direction: column; background: var(--surface); }
+.focus-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.focus-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.focus-body { flex: 1; min-height: 0; height: auto; max-height: none; }
+.focus-body .ref-list { flex-basis: 180px; }
+.focus-body .ref-preview { height: 100%; }
+.focus-body .ref-preview .page-window-frame { height: 100%; }

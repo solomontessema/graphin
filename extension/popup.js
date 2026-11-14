@@ -48,6 +48,8 @@ async function init() {
     say(e.message, true);
     return;
   }
+  // The right-click menu lists the networks too, so it is refreshed whenever the popup opens.
+  chrome.runtime.sendMessage({ type: 'networks-changed' }).catch(() => {});
   if (!who.user) {
     el.network.innerHTML = '<option value="">Not logged in</option>';
     say('You are not logged in to Graphin. Log in there, then open this again.', true);

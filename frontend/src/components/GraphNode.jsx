@@ -5,6 +5,7 @@ import { linksOf, mediaOf } from '../links.js';
 import NodeTools from './NodeTools.jsx';
 import SideHandles from './SideHandles.jsx';
 import ReferencesBadge from './ReferencesBadge.jsx';
+import TexText from './TexText.jsx';
 import { tagColour } from '../tags.js';
 
 // The largest title size that fits a box with room to spare, from a rough count of the characters that fit on a line.
@@ -131,7 +132,12 @@ export default function GraphNode({ id, data, selected }) {
     <div className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
       <SideHandles />
 
-      <NodeTools label={node.title} onEdit={() => actions.edit(id)} onRemove={() => actions.remove(id)} />
+      <NodeTools
+        label={node.title}
+        onEdit={() => actions.edit(id)}
+        onRemove={() => actions.remove(id)}
+        onMaximize={links.length > 0 ? () => actions.maximize(id) : undefined}
+      />
 
       {/* Dragging an edge of a selected tile changes its size. The stored height is the least it can be. */}
       <NodeResizer
@@ -169,7 +175,7 @@ export default function GraphNode({ id, data, selected }) {
           className={`node-title${titleCentred ? ' centred' : ''}`}
           style={titleStyle}
         >
-          {node.title}
+          <TexText text={node.title} />
         </div>
 
         {!compact && node.commentary && (
@@ -177,7 +183,7 @@ export default function GraphNode({ id, data, selected }) {
             className={`node-commentary fade${commentaryLines ? ' clamped' : ''}`}
             style={{ opacity: fadeCommentary, WebkitLineClamp: commentaryLines ?? undefined }}
           >
-            {node.commentary}
+            <TexText text={node.commentary} />
           </div>
         )}
 

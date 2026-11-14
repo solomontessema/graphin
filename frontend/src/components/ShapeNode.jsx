@@ -1,4 +1,5 @@
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import TexText from './TexText.jsx';
 
 // The shapes a canvas shape can take. The first five are drawn with a CSS border; the others are polygons.
 export const SHAPE_KINDS = [
@@ -96,7 +97,11 @@ export default function ShapeNode({ id, data, selected }) {
         />
       )}
 
-      {node.commentary && <div className="shape-label">{node.commentary}</div>}
+      {node.commentary && (
+        <div className="shape-label">
+          <TexText text={node.commentary} />
+        </div>
+      )}
 
       <NodeToolbar isVisible={selected} position={Position.Top} offset={10}>
         <div className="shape-panel nodrag nopan nowheel" onPointerDown={(e) => e.stopPropagation()}>

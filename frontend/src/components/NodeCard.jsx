@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import { referenceName } from './ReferencesBadge.jsx';
@@ -119,9 +119,24 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
   const [longitude, setLongitude] = useState(node.longitude ?? '');
   const [country, setCountry] = useState(node.country || '');
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  // 'saved', 'unsaved' (a change waits to be saved), 'saving', or 'error'. Shown in the bar at the top of the card.
+  const [status, setStatus] = useState('saved');
   const [countryNames, setCountryNames] = useState([]);
-  const formId = `tile-details-${node.id}`;
+  // Edits are saved by themselves (see below). These keep what to save, and whether anything is waiting.
+  const values = {
+    title,
+    commentary: commentary.trim() || null,
+    time: time.trim() || null,
+    latitude: latitude === '' ? null : Number(latitude),
+    longitude: longitude === '' ? null : Number(longitude),
+    country: country.trim() || null,
+  };
+  const latest = useRef(values);
+  latest.current = values;
+  const dirty = useRef(false);
+  const mounted = useRef(false);
+  const timer = useRef(null);
+  const sequence = useRef(0);
   // The countries of the world map are offered as you type; any other name can still be written.
   useEffect(() => {
     let live = true;
@@ -131,41 +146,63 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
     };
   }, []);
 
-  useEffect(() => {
-    setSaved(false);
-  }, [title, commentary, time, latitude, longitude, country]);
-
-  async function save(event) {
-    event.preventDefault();
+  // Sends the edits to the server. A failed save is kept and tried again on the next change, and says so.
+  async function flush() {
+    clearTimeout(timer.current);
+    if (!dirty.current) return;
+    const toSave = latest.current;
+    if (!toSave.title.trim()) {
+      setStatus('error');
+      setError('Give the tile a title. It is saved once it has one.');
+      return;
+    }
+    dirty.current = false;
+    const mine = ++sequence.current;
+    setStatus('saving');
     setError('');
     try {
-      const updated = await api.updateNode(node.id, {
-        title,
-        commentary: commentary.trim() || null,
-        time: time.trim() || null,
-        latitude: latitude === '' ? null : Number(latitude),
-        longitude: longitude === '' ? null : Number(longitude),
-        country: country.trim() || null,
-      });
+      const updated = await api.updateNode(node.id, toSave);
       onChange(updated);
-      setSaved(true);
+      if (mine === sequence.current && !dirty.current) setStatus('saved');
     } catch (e) {
+      dirty.current = true;
+      setStatus('error');
       setError(e.message);
     }
   }
+
+  // Any change marks the tile as unsaved and saves it shortly after the last change.
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return undefined;
+    }
+    dirty.current = true;
+    setStatus('unsaved');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(flush, 700);
+    return undefined;
+  }, [title, commentary, time, latitude, longitude, country]);
+
+  // A change made just before the card closes is still saved.
+  useEffect(() => () => {
+    if (dirty.current) flush();
+  }, []);
 
   const related = edges.filter((e) => e.source_id === node.id || e.target_id === node.id);
 
   return (
     <div className="card-body">
-      {/* Save stays at the top of the card, so it is in view however far the card is scrolled. */}
+      {/* The status stays at the top of the card, so it is in view however far the card is scrolled. */}
       <div className="card-save-bar">
-        <button type="submit" form={formId}>
-          {saved ? 'Saved' : 'Save'}
-        </button>
-        {error && <span className="error">{error}</span>}
+        <span className={`autosave autosave-${status}`} role="status" aria-live="polite">
+          {status === 'saving' && 'Saving…'}
+          {status === 'unsaved' && 'Changes saving…'}
+          {status === 'saved' && '✓ All changes saved'}
+          {status === 'error' && error}
+        </span>
       </div>
-      <form id={formId} className="details-form" onSubmit={save}>
+      <form className="details-form" onSubmit={(event) => { event.preventDefault(); flush(); }} onBlur={flush}>
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} required />

@@ -1,18 +1,66 @@
-import { api, getAddress, getLastNetwork, pageInfo, tellGraphin } from './lib.js';
+import { api, getAddress, pageInfo, session, setLastNetwork, tellGraphin } from './lib.js';
 
-// Right-click menu: save a link, the highlighted text, or the page itself to the last network used.
-const MENU = [
-  { id: 'save-link', title: 'Save link to Graphin', contexts: ['link'] },
-  { id: 'save-selection', title: 'Save selection to Graphin', contexts: ['selection'] },
-  { id: 'save-page', title: 'Save page to Graphin', contexts: ['page'] },
+// Right-click menu. Each kind of save has its own entry, and under it one entry per network, so the person picks the
+// network when saving. The list of networks is kept in storage and refreshed when the browser starts, when the extension
+// is installed, and when the popup opens (so a new network appears after the next time the popup is used).
+const KINDS = [
+  { kind: 'link', title: 'Save link to Graphin', contexts: ['link'] },
+  { kind: 'selection', title: 'Save selection to Graphin', contexts: ['selection'] },
+  { kind: 'page', title: 'Save page to Graphin', contexts: ['page'] },
 ];
+const NETWORK_LIMIT = 40;
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => {
-    for (const item of MENU) {
-      chrome.contextMenus.create(item);
+function clearMenu() {
+  return new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
+}
+
+/** Builds the menu from the saved list of networks. */
+async function buildMenu() {
+  const { networks = [], signedIn = false } = await chrome.storage.local.get(['networks', 'signedIn']);
+  await clearMenu();
+  for (const item of KINDS) {
+    chrome.contextMenus.create({ id: item.kind, title: item.title, contexts: item.contexts });
+    if (!signedIn) {
+      chrome.contextMenus.create({ id: `${item.kind}|login`, parentId: item.kind, title: 'Log in to Graphin first', contexts: item.contexts });
+    } else if (networks.length === 0) {
+      chrome.contextMenus.create({ id: `${item.kind}|none`, parentId: item.kind, title: 'No networks yet', contexts: item.contexts });
+    } else {
+      for (const network of networks) {
+        chrome.contextMenus.create({ id: `${item.kind}|${network.id}`, parentId: item.kind, title: network.name, contexts: item.contexts });
+      }
     }
-  });
+  }
+}
+
+/** Asks Graphin which networks this person has, keeps the list, and rebuilds the menu. */
+async function refreshNetworks() {
+  const address = await getAddress();
+  try {
+    const who = await session(address);
+    if (who.user) {
+      const networks = await api(address, 'GET', '/networks');
+      await chrome.storage.local.set({
+        signedIn: true,
+        networks: networks.slice(0, NETWORK_LIMIT).map((n) => ({ id: n.id, name: n.name })),
+      });
+    } else {
+      await chrome.storage.local.set({ signedIn: false, networks: [] });
+    }
+  } catch {
+    // Graphin is not reachable: the menu offers the log-in entry until it is.
+    await chrome.storage.local.set({ signedIn: false, networks: [] });
+  }
+  await buildMenu();
+}
+
+chrome.runtime.onInstalled.addListener(refreshNetworks);
+chrome.runtime.onStartup.addListener(refreshNetworks);
+
+// The popup asks for a refresh when it opens.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message && message.type === 'networks-changed') {
+    refreshNetworks();
+  }
 });
 
 function flash(text, color) {
@@ -22,16 +70,18 @@ function flash(text, color) {
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const networkId = await getLastNetwork();
-  if (!networkId) {
-    // Nothing to save into yet. Saving once from the toolbar popup picks a network.
-    flash('!', '#c62828');
+  // The menu item is "kind|network id", or "kind|login" or "kind|none" when there is nothing to save into.
+  const [kind, networkId] = String(info.menuItemId).split('|');
+  if (!KINDS.some((item) => item.kind === kind)) return;
+  const address = await getAddress();
+  if (networkId === 'login') {
+    chrome.tabs.create({ url: address });
     return;
   }
+  if (networkId === 'none') return;
 
-  const address = await getAddress();
-  const isLink = info.menuItemId === 'save-link';
-  const isSelection = info.menuItemId === 'save-selection';
+  const isLink = kind === 'link';
+  const isSelection = kind === 'selection';
 
   try {
     // The page's own title, thumbnail, and favicon are used only when saving the page itself.
@@ -51,6 +101,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       thumbnail_url: page?.thumbnail_url || null,
       favicon_url: page?.favicon_url || null,
     });
+    await setLastNetwork(networkId);
     tellGraphin(networkId).catch(() => {});
     flash('✓', '#2e7d32');
   } catch (e) {

@@ -11,6 +11,8 @@ import {
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
+import { ReferenceViewer, referenceName } from './ReferencesBadge.jsx';
+import { linksOf } from '../links.js';
 import EdgeCard from './EdgeCard.jsx';
 import RightToolbar, { ITEMS } from './RightToolbar.jsx';
 import { convertShape } from '../shapes.js';
@@ -215,6 +217,17 @@ function Board({ networkId, user, onLogout }) {
   const [pending, setPending] = useState(null);
   // The style card for a link: { id, left, top }, opened by clicking the link.
   const [edgeCard, setEdgeCard] = useState(null);
+  // A tile's references shown large over the whole canvas, with no lines between tiles: { references, active }.
+  const [maximized, setMaximized] = useState(null);
+
+  useEffect(() => {
+    if (!maximized) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape') setMaximized(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [maximized]);
   // The kind of item the right-hand toolbar is placing ("webpage", "pdf", "image" or "note"), or null.
   // While it is set, the next click on the canvas puts a new item there.
   const [addType, setAddType] = useState(null);
@@ -710,6 +723,7 @@ function Board({ networkId, user, onLogout }) {
               styleShape,
               saveText,
               edit: (id) => actionsRef.current.edit(id),
+              maximize: (id) => actionsRef.current.maximize(id),
               remove: (id) => actionsRef.current.remove(id),
             },
           },
@@ -1273,8 +1287,19 @@ function Board({ networkId, user, onLogout }) {
   }
 
   // The icons on nodes call these through actionsRef, so they always reach the current functions.
+  // Shows a tile's references large over the canvas.
+  function openMaximized(id) {
+    const node = rfNodes.find((n) => n.id === id)?.data.node;
+    const references = node ? linksOf(node) : [];
+    if (references.length === 0) return;
+    closeCard();
+    setEdgeCard(null);
+    setMaximized({ references, active: 0 });
+  }
+
   actionsRef.current = {
     edit: openEditCard,
+    maximize: openMaximized,
     remove: (id) => {
       const node = rfNodes.find((n) => n.id === id)?.data.node;
       if (node) deleteNode(node);
@@ -1643,6 +1668,24 @@ function Board({ networkId, user, onLogout }) {
           />
         )}
       </div>
+
+      {maximized && (
+        <div className="focus-view" role="dialog" aria-label="Maximized references">
+          <div className="focus-bar">
+            <span className="focus-title">{referenceName(maximized.references[Math.min(maximized.active, maximized.references.length - 1)])}</span>
+            <button type="button" className="ghost small" onClick={() => setMaximized(null)} aria-label="Close maximized view">
+              ×
+            </button>
+          </div>
+          <div className="ref-body focus-body">
+            <ReferenceViewer
+              references={maximized.references}
+              active={maximized.active}
+              onPick={(i) => setMaximized((m) => (m ? { ...m, active: i } : m))}
+            />
+          </div>
+        </div>
+      )}
 
       {edgeCard && activeEdge && (
         <EdgeCard
