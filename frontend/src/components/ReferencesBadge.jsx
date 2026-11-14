@@ -113,7 +113,7 @@ export default function ReferencesBadge({ references }) {
             </button>
           </div>
           <div className="ref-body">
-            <ReferenceViewer references={references} active={active} onPick={setActive} />
+            <ReferencePreview reference={current} />
           </div>
         </div>
       )}
