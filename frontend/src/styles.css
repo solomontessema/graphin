@@ -1508,7 +1508,7 @@ button.on {
 .ref-window { width: 680px; }
 .ref-body { display: flex; height: 420px; max-height: 70vh; }
 .ref-list {
-  flex: 0 0 140px;
+  flex: 0 0 116px;
   margin: 0;
   padding: 4px 0;
   list-style: none;
@@ -1863,6 +1863,6 @@ button.on {
 .focus-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .focus-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .focus-body { flex: 1; min-height: 0; height: auto; max-height: none; }
-.focus-body .ref-list { flex-basis: 180px; }
+.focus-body .ref-list { flex-basis: 136px; }
 .focus-body .ref-preview { height: 100%; }
 .focus-body .ref-preview .page-window-frame { height: 100%; }
