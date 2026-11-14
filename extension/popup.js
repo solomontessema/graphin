@@ -1,4 +1,4 @@
-import { api, getAddress, getLastNetwork, pageInfo, session, setLastNetwork } from './lib.js';
+import { api, getAddress, getLastNetwork, pageInfo, session, setLastNetwork, tellGraphin } from './lib.js';
 
 const el = {
   network: document.getElementById('network'),
@@ -108,6 +108,7 @@ async function save(event) {
       favicon_url: favicon,
     });
     await setLastNetwork(el.network.value);
+    tellGraphin(el.network.value).catch(() => {});
     const name = networks.find((n) => n.id === el.network.value)?.name || 'Graphin';
     say(`Saved to ${name}.`);
     const open = document.createElement('a');

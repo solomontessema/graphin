@@ -28,6 +28,17 @@ export async function setLastNetwork(id) {
   await chrome.storage.local.set({ lastNetwork: id });
 }
 
+// The pages of Graphin that show a network, in the same places as the host permissions in manifest.json.
+const GRAPHIN_PAGES = ['https://graphin.org/*', 'http://localhost:8100/*', 'http://127.0.0.1:8100/*'];
+
+/** Tells the open Graphin tabs that a network changed, so they show it at once. Pages without Graphin are skipped. */
+export async function tellGraphin(networkId) {
+  const tabs = await chrome.tabs.query({ url: GRAPHIN_PAGES });
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, { type: 'graphin-changed', networkId }).catch(() => {});
+  }
+}
+
 /** Who is signed in to Graphin at this address: {mode, user} where user is null when nobody is. */
 export function session(address) {
   return api(address, 'GET', '/auth/me');

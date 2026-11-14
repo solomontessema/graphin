@@ -1,4 +1,4 @@
-import { api, getAddress, getLastNetwork, pageInfo } from './lib.js';
+import { api, getAddress, getLastNetwork, pageInfo, tellGraphin } from './lib.js';
 
 // Right-click menu: save a link, the highlighted text, or the page itself to the last network used.
 const MENU = [
@@ -51,6 +51,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       thumbnail_url: page?.thumbnail_url || null,
       favicon_url: page?.favicon_url || null,
     });
+    tellGraphin(networkId).catch(() => {});
     flash('✓', '#2e7d32');
   } catch (e) {
     console.error('Graphin Save failed:', e.message);

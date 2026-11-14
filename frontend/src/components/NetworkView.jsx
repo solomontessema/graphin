@@ -470,6 +470,44 @@ function Board({ networkId, user, onLogout }) {
     };
   }, [networkId]);
 
+  // Shows changes made elsewhere at once: the browser extension tells this page when it saves to this network, and the
+  // page also reloads when its tab is shown again. Nothing is reloaded while a tile is being dragged.
+  useEffect(() => {
+    if (!loaded) return undefined;
+    let live = true;
+    const refresh = () => {
+      if (!live || document.hidden || document.querySelector('.react-flow__node.dragging')) return;
+      api
+        .graph(networkId)
+        .then((graph) => {
+          if (!live) return;
+          const nodes = graph.nodes.map(toFlowNode);
+          // The reload is not a change to undo, so it becomes the state to compare with from now on.
+          history.current.skip = true;
+          history.current.committed = canvasState(nodes, graph.edges);
+          setRfNodes(nodes);
+          setEdges(graph.edges);
+        })
+        .catch(() => {});
+    };
+    const onMessage = (event) => {
+      const data = event.data;
+      if (event.source === window && event.origin === window.location.origin && data?.source === 'graphin-save' && data.networkId === networkId) {
+        refresh();
+      }
+    };
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    window.addEventListener('message', onMessage);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      live = false;
+      window.removeEventListener('message', onMessage);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [networkId, loaded]);
+
   // Escape closes the card and the open menus.
   useEffect(() => {
     const onKey = (e) => {
