@@ -64,7 +64,7 @@ final class NodeController extends BaseController
                 $isShape ? null : $this->optionalTags($data),
             ]
         );
-        return $this->json($response, $this->withNewLinks($this->findNodeOut($id), WikiLinks::sync($this->db, $args['id'], $id, $title, $commentary)), 201);
+        return $this->json($response, $this->withLinkChanges($this->findNodeOut($id), $this->syncLinks($args['id'], $id, $title, $commentary)), 201);
     }
 
     /** PUT /api/nodes/{id} : a field left out keeps its value. */
@@ -107,21 +107,46 @@ final class NodeController extends BaseController
              WHERE id = ?',
             [$title, $url, $commentary, $shape, $style, $time, $latitude, $longitude, $country, $refs, $tags, $args['id']]
         );
-        return $this->json($response, $this->withNewLinks($this->findNodeOut($args['id']), WikiLinks::sync($this->db, $node['network_id'], $args['id'], $title, $commentary)));
+        // A client that is still being typed into can ask to leave the arrows alone for now (sync_links: false).
+        $sync = !array_key_exists('sync_links', $data) || !empty($data['sync_links']);
+        return $this->json($response, $this->withLinkChanges($this->findNodeOut($args['id']), $this->syncLinks($node['network_id'], $args['id'], $title, $commentary, $sync)));
     }
 
     /**
-     * The tile as sent back to the client. When wiki links in its text made new links, they come with it as new_edges, so the
-     * client can draw the arrows without reloading.
+     * Brings the arrows of a tile in line with the wiki links in its text, unless $sync is false. If that cannot be done, for
+     * example because the column that marks these arrows is not in the database yet, the tile is saved all the same.
+     *
+     * @return array{created: list<array<string, mixed>>, removed: list<string>}
+     */
+    private function syncLinks(string $networkId, string $nodeId, ?string $title, ?string $commentary, bool $sync = true): array
+    {
+        $nothing = ['created' => [], 'removed' => []];
+        if (!$sync) {
+            return $nothing;
+        }
+        try {
+            return WikiLinks::sync($this->db, $networkId, $nodeId, $title, $commentary);
+        } catch (\Throwable $e) {
+            error_log('Graphin wiki links: ' . $e->getMessage());
+            return $nothing;
+        }
+    }
+
+    /**
+     * The tile as sent back to the client. The arrows that wiki links in its text made come with it as new_edges, and the ids
+     * of the ones they removed as removed_edge_ids, so the client can update the canvas without reloading.
      *
      * @param array<string, mixed> $out
-     * @param list<array<string, mixed>> $newEdges
+     * @param array{created: list<array<string, mixed>>, removed: list<string>} $changes
      * @return array<string, mixed>
      */
-    private function withNewLinks(array $out, array $newEdges): array
+    private function withLinkChanges(array $out, array $changes): array
     {
-        if ($newEdges !== []) {
-            $out['new_edges'] = $newEdges;
+        if ($changes['created'] !== []) {
+            $out['new_edges'] = $changes['created'];
+        }
+        if ($changes['removed'] !== []) {
+            $out['removed_edge_ids'] = $changes['removed'];
         }
         return $out;
     }

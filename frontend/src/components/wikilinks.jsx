@@ -68,15 +68,30 @@ function targetTypedAt(text, caret) {
 }
 
 /**
+ * True while a wiki link is being written: the caret is inside a link and what was typed last is not a "|" or ",". Those two
+ * mark a part of the link as finished, so they (and leaving the link) are when its arrow may be made or removed. Until then the
+ * label may be half typed.
+ */
+function writingLinkAt(text, caret) {
+  const before = text.slice(0, caret);
+  const start = before.lastIndexOf('[[');
+  if (start < 0) return false;
+  const inside = before.slice(start + 2);
+  if (inside.includes(']]') || inside.includes('\n')) return false;
+  return !/[|,]$/.test(inside);
+}
+
+/**
  * A text box or a text area (as="input" or the default "textarea") that helps write wiki links. After "[[" it lists the tiles
  * whose titles begin with what has been typed, narrowing as more is typed. Clicking a title, or pressing Enter or Tab on
  * the highlighted one, types it, closes the link, and leaves the caret before the "]]" so a relationship can follow after "|".
  * The arrow keys move through the list and Escape closes it.
  *
  * value is the text and onValue(text) receives each change; other props go to the box. exceptId is a tile to leave out of the
- * list (the tile being written, which cannot link to itself).
+ * list (the tile being written, which cannot link to itself). onWriting(true or false), when given, says whether a link is being
+ * written right now (see writingLinkAt), so a save can wait before the arrows are made or removed.
  */
-export function WikiField({ as: Tag = 'textarea', value, onValue, exceptId, onKeyDown, ...rest }) {
+export function WikiField({ as: Tag = 'textarea', value, onValue, exceptId, onKeyDown, onBlur, onFocus, onWriting, ...rest }) {
   const wiki = useWiki();
   const field = useRef(null);
   const chosen = useRef(false);
@@ -101,6 +116,12 @@ export function WikiField({ as: Tag = 'textarea', value, onValue, exceptId, onKe
       setHidden(false);
     }
   }, [typed]);
+
+  // Tells the owner when a link starts or stops being written.
+  const writing = writingLinkAt(text, caret);
+  useEffect(() => {
+    onWriting?.(writing);
+  }, [writing]);
 
   const track = (event) => setCaret(event.target.selectionStart ?? 0);
 
@@ -159,6 +180,18 @@ export function WikiField({ as: Tag = 'textarea', value, onValue, exceptId, onKe
         onClick={track}
         onSelect={track}
         onKeyDown={keys}
+        onFocus={(event) => {
+          // Coming back to the box: say again whether the caret is in a link.
+          const at = event.target.selectionStart ?? 0;
+          setCaret(at);
+          onWriting?.(writingLinkAt(event.target.value, at));
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          // Leaving the box ends any link being written.
+          onWriting?.(false);
+          onBlur?.(event);
+        }}
       />
       {open && (
         <ul className="wiki-menu" role="listbox" aria-label="Tiles to link to">

@@ -95,8 +95,9 @@ final class EdgeController extends BaseController
             $this->assertNotLinkedBy($source, $target, $relationship, $args['id']);
         }
 
+        // Changing an arrow by hand takes it over: from now on it is no longer made or removed by the wiki links in the text.
         $this->db->execute(
-            'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?
+            'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?, wikilink = 0
              WHERE id = ?',
             [$style, $source, $target, $relationship, $bidirectional, $tags, $args['id']]
         );

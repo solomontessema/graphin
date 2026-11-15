@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS `edges` (
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `style` text DEFAULT NULL,
   `tags` text DEFAULT NULL,
+  `wikilink` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_edges_pair` (`source_id`,`target_id`,`relationship`),
   KEY `idx_edges_network` (`network_id`),

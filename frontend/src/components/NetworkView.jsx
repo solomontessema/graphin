@@ -1372,8 +1372,14 @@ function Board({ networkId, user, onLogout }) {
   }
 
   function replaceNode(updated) {
-    const { new_edges: newEdges, ...fields } = updated;
+    const { new_edges: newEdges, removed_edge_ids: removedIds, ...fields } = updated;
     addEdges(newEdges);
+    // Arrows that a wiki link made and the text no longer asks for are gone.
+    if (removedIds?.length) {
+      const gone = new Set(removedIds);
+      setEdges((es) => es.filter((e) => !gone.has(e.id)));
+      setEdgeCard((card) => (card && gone.has(card.id) ? null : card));
+    }
     setRfNodes((ns) =>
       ns.map((n) => (n.id === fields.id ? { ...n, data: { ...n.data, node: { ...n.data.node, ...fields } } } : n))
     );

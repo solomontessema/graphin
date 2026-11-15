@@ -84,6 +84,8 @@ ALTER TABLE nodes ADD COLUMN IF NOT EXISTS refs MEDIUMTEXT NULL;
 -- Tags (codes) on nodes and edges, as a JSON list of lower-case labels, and the colour of each tag in a network.
 ALTER TABLE nodes ADD COLUMN IF NOT EXISTS tags TEXT NULL;
 ALTER TABLE edges ADD COLUMN IF NOT EXISTS tags TEXT NULL;
+-- 1 for an arrow made from a [[wiki link]] in a tile's text. The text decides these: they are removed when the link is edited out.
+ALTER TABLE edges ADD COLUMN IF NOT EXISTS wikilink TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE networks ADD COLUMN IF NOT EXISTS tag_colors TEXT NULL;
 -- The picture shown on the network's tile on the home page: a link to an image, or none for the default.
 ALTER TABLE networks ADD COLUMN IF NOT EXISTS cover_url TEXT NULL;

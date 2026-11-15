@@ -138,6 +138,8 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
   const mounted = useRef(false);
   const timer = useRef(null);
   const sequence = useRef(0);
+  const writing = useRef({ title: false, notes: false });
+  const pendingSync = useRef(false);
   // The countries of the world map are offered as you type; any other name can still be written.
   useEffect(() => {
     let live = true;
@@ -148,7 +150,10 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
   }, []);
 
   // Sends the edits to the server. A failed save is kept and tried again on the next change, and says so.
-  async function flush() {
+  // While a [[wiki link]] is being written, the server is asked to leave the arrows alone (sync_links: false), because the label
+  // may be half typed. Once the part is finished (a "|" or "," typed, or the link or the box left), it is asked to bring the arrows
+  // in line with the text. `final` is the last save, as the card closes, when nothing waits any more.
+  async function flush(final = false) {
     clearTimeout(timer.current);
     if (!dirty.current) return;
     const toSave = latest.current;
@@ -161,8 +166,10 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
     const mine = ++sequence.current;
     setStatus('saving');
     setError('');
+    const waiting = final !== true && (writing.current.title || writing.current.notes);
     try {
-      const updated = await api.updateNode(node.id, toSave);
+      const updated = await api.updateNode(node.id, { ...toSave, sync_links: !waiting });
+      pendingSync.current = waiting;
       onChange(updated);
       if (mine === sequence.current && !dirty.current) setStatus('saved');
     } catch (e) {
@@ -171,6 +178,24 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
       setError(e.message);
     }
   }
+
+  // A save that only brings the arrows in line with the text as it is stored, for after a link that was being written is finished.
+  async function syncLinks() {
+    pendingSync.current = false;
+    try {
+      onChange(await api.updateNode(node.id, { sync_links: true }));
+    } catch (e) {
+      pendingSync.current = true;
+      setStatus('error');
+      setError(e.message);
+    }
+  }
+
+  // Called by the title and notes boxes when a link starts or stops being written.
+  const writingIn = (field) => (isWriting) => {
+    writing.current[field] = isWriting;
+    if (!isWriting && pendingSync.current && !dirty.current && !writing.current.title && !writing.current.notes) syncLinks();
+  };
 
   // Any change marks the tile as unsaved and saves it shortly after the last change.
   useEffect(() => {
@@ -187,7 +212,8 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
 
   // A change made just before the card closes is still saved.
   useEffect(() => () => {
-    if (dirty.current) flush();
+    if (dirty.current) flush(true);
+    else if (pendingSync.current) syncLinks();
   }, []);
 
   const related = edges.filter((e) => e.source_id === node.id || e.target_id === node.id);
@@ -203,14 +229,14 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
           {status === 'error' && error}
         </span>
       </div>
-      <form className="details-form" onSubmit={(event) => { event.preventDefault(); flush(); }} onBlur={flush}>
+      <form className="details-form" onSubmit={(event) => { event.preventDefault(); flush(); }} onBlur={() => flush()}>
         <label>
           Title
-          <WikiField as="input" value={title} onValue={setTitle} exceptId={node.id} maxLength={255} required />
+          <WikiField as="input" value={title} onValue={setTitle} onWriting={writingIn('title')} exceptId={node.id} maxLength={255} required />
         </label>
         <label>
           Notes
-          <WikiField value={commentary} onValue={setCommentary} exceptId={node.id} rows={5} maxLength={20000} />
+          <WikiField value={commentary} onValue={setCommentary} onWriting={writingIn('notes')} exceptId={node.id} rows={5} maxLength={20000} />
           <span className="muted small">
             Link to another tile with [[Tile title | relationship | text to show]]. With a relationship, the arrow is made for you.
           </span>

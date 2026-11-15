@@ -94,6 +94,7 @@ if ($db->driver() === 'sqlite') {
     $db->ensureColumn('nodes', 'refs', 'TEXT NULL');
     $db->ensureColumn('nodes', 'tags', 'TEXT NULL');
     $db->ensureColumn('edges', 'tags', 'TEXT NULL');
+    $db->ensureColumn('edges', 'wikilink', 'INTEGER NOT NULL DEFAULT 0');
     $db->ensureColumn('networks', 'tag_colors', 'TEXT NULL');
     $db->ensureColumn('networks', 'cover_url', 'TEXT NULL');
     $db->ensureColumn('networks', 'tile_color', 'TEXT NULL');
