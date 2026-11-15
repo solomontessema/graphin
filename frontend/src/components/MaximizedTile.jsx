@@ -43,10 +43,22 @@ function placeBeside(rect, tall) {
 export function TileBody({ node, tagColours, linkHover }) {
   const links = linksOf(node);
   const media = mediaOf(node);
+  // The same picture the tile shows: its first picture or video link, or else the preview image saved with the page.
+  const picture = media?.src || node.thumbnail_url || null;
   const place = placeOf(node);
   return (
     <>
-      {media?.src && <img className="max-media" src={media.src} alt={node.title} referrerPolicy="no-referrer" />}
+      {picture && (
+        <img
+          className="max-media"
+          src={picture}
+          alt={node.title}
+          referrerPolicy="no-referrer"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      )}
 
       <h2 className="max-heading">
         <TexText text={node.title} />
