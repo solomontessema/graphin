@@ -1897,3 +1897,23 @@ button.on {
 .max-links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .max-links li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .max-links a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
+
+/* Relationships of a maximized tile, and the floating preview of a hovered link or related tile. */
+.max-relations { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
+.max-relations h3 { margin: 0 0 6px; font-size: 15px; }
+.max-relations h4 { margin: 10px 0 4px; font-size: 13px; color: var(--muted, #5b6472); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.max-relations ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.relation-type { font-weight: 600; }
+.max-tile-link { background: none; border: none; padding: 0; font: inherit; color: #1d4ed8; text-decoration: underline; cursor: pointer; text-align: left; }
+.max-tile-link:hover { color: #1e3a8a; }
+.max-preview { position: fixed; z-index: 1000; display: flex; flex-direction: column; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); overflow: hidden; }
+.max-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
+.max-preview-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 16px; }
+.max-preview-body .max-heading { font-size: 20px; }
+.max-preview-body .max-media { max-height: 220px; }
+.max-preview-frame { flex: 1; min-height: 0; display: flex; }
+.max-preview-frame .ref-preview { height: 100%; }
+
+/* The left end of the maximized tile's bar: the way back to the graph, then the tile's name. */
+.max-back { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.max-back button { flex: 0 0 auto; white-space: nowrap; }

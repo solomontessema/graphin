@@ -1286,6 +1286,19 @@ function Board({ networkId, user, onLogout }) {
   }
 
   // The icons on nodes call these through actionsRef, so they always reach the current functions.
+  // The relationships of a tile: the ones going out from it and the ones coming in to it, each with the tile at the other end.
+  function relationsOf(id) {
+    return edges
+      .filter((e) => e.source_id === id || e.target_id === id)
+      .map((e) => {
+        const outgoing = e.source_id === id;
+        const other = rfNodes.find((n) => n.id === (outgoing ? e.target_id : e.source_id))?.data.node;
+        const isTile = other && other.type !== 'shape' && other.type !== 'text';
+        return isTile ? { id: e.id, relationship: e.relationship, twoWay: Boolean(e.is_bidirectional), outgoing, other } : null;
+      })
+      .filter(Boolean);
+  }
+
   // Enlarges a tile to fill the canvas.
   function openMaximized(id) {
     closeCard();
@@ -1669,6 +1682,8 @@ function Board({ networkId, user, onLogout }) {
         <div className="focus-view" role="dialog" aria-label="Maximized tile">
           <MaximizedTile
             node={rfNodes.find((n) => n.id === maximized.id).data.node}
+            relations={relationsOf(maximized.id)}
+            onOpenTile={(id) => setMaximized({ id })}
             tagColours={tagColours}
             onEdit={() => {
               setMaximized(null);

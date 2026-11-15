@@ -180,7 +180,7 @@ export function ReferenceViewer({ references, active, onPick }) {
 }
 
 /** One reference shown on the right of the window: a picture, a page in a frame, or a button when the page cannot be framed. */
-function ReferencePreview({ reference }) {
+export function ReferencePreview({ reference }) {
   const kind = kindOf(reference.url);
   const image = kind === 'image';
   const embed = kind === 'video' ? videoEmbed(reference.url) : null;
