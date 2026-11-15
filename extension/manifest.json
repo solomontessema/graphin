@@ -4,10 +4,10 @@
   "version": "0.2.0",
   "description": "Save the page, a link, or highlighted text to a Graphin network.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
-  "host_permissions": ["https://graphin.org/*", "http://localhost:8100/*", "http://localhost:5173/*", "http://127.0.0.1:8765/*"],
+  "host_permissions": ["https://graphin.org/*"],
   "content_scripts": [
     {
-      "matches": ["https://graphin.org/*", "http://localhost:8100/*", "http://127.0.0.1:8100/*"],
+      "matches": ["https://graphin.org/*"],
       "js": ["bridge.js"]
     }
   ],
@@ -15,9 +15,19 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_title": "Save to Graphin",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "options_ui": {
     "page": "options.html",

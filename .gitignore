@@ -10,3 +10,6 @@
 /deploy/stage/
 /deploy/deploy.log
 /storage/
+
+# Browser extension store package (built by extension/package-store.ps1)
+/extension/dist/

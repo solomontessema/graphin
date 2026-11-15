@@ -40,6 +40,13 @@ export default function BookmarkletDialog({ onClose }) {
         <p className="muted small">
           Bookmarklets run on the page you are on, so they work in Edge and Chrome without installing anything.
         </p>
+        <p>
+          Prefer right-click? Install the free{' '}
+          <a href="https://chromewebstore.google.com/detail/bfanogkkajkikeaanpifjcenhelggfml" target="_blank" rel="noreferrer">
+            Graphin Save extension for Chrome
+          </a>
+          . It adds Save link, Save selection and Save page to the right-click menu, and lets you pick the network.
+        </p>
         <div className="form-row end">
           <button type="button" className="ghost" onClick={copy}>
             {copied ? 'Copied' : 'Copy code'}

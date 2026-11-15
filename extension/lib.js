@@ -1,12 +1,10 @@
 // Shared by the popup, the options page, and the background worker.
 
-// Where Graphin runs. The first is the live site (graphin.org, with the app and its API under index.php). The others
-// are for development and for the desktop app. All of them are listed in manifest.json.
-// The desktop app listens on 127.0.0.1:8765 (see desktop/src-tauri/src/main.rs).
-export const ADDRESSES = ['https://graphin.org/index.php', 'http://localhost:8100', 'http://localhost:5173', 'http://127.0.0.1:8765'];
+// Where Graphin runs: the live site, with the app and its API under index.php. This is the only address the extension uses,
+// and the only one listed in manifest.json.
+export const ADDRESSES = ['https://graphin.org/index.php'];
 const DEFAULT_ADDRESS = ADDRESSES[0];
-// Bumped when the default changes, so a copy of the extension that saved an older choice (such as localhost) moves to the
-// new default once.
+// Bumped when the default changes, so an older saved choice moves to the new default once.
 const SETTINGS_VERSION = 2;
 
 export async function getAddress() {
@@ -29,7 +27,7 @@ export async function setLastNetwork(id) {
 }
 
 // The pages of Graphin that show a network, in the same places as the host permissions in manifest.json.
-const GRAPHIN_PAGES = ['https://graphin.org/*', 'http://localhost:8100/*', 'http://127.0.0.1:8100/*'];
+const GRAPHIN_PAGES = ['https://graphin.org/*'];
 
 /** Tells the open Graphin tabs that a network changed, so they show it at once. Pages without Graphin are skipped. */
 export async function tellGraphin(networkId) {
