@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import TexText from './TexText.jsx';
 import RichText from './RichText.jsx';
 import { KindIcon, ReferencePreview, referenceName } from './ReferencesBadge.jsx';
@@ -24,15 +24,36 @@ const relationName = (relationship) => relationship.replace(/_/g, ' ').toLowerCa
  * Where the preview goes: just to the right of the hovered item, level with it, or to its left when there is no room on
  * the right. It is kept inside the window.
  */
-function placeBeside(rect, tall) {
+function placeBeside(rect, tall, measured) {
   const margin = 8;
   const gap = 10;
   const width = Math.min(560, window.innerWidth * 0.44);
-  const height = Math.min(window.innerHeight * 0.7, 620);
+  const limit = Math.min(window.innerHeight * 0.7, 620);
+  // A page needs the full height. A tile's content takes only the height it needs, up to the same limit, so its real height
+  // (measured once it is shown) decides whether it has to move up to stay on the screen. A small tile stays level with the link.
+  const height = tall ? limit : Math.min(measured ?? limit, limit);
   const left = rect.right + gap + width <= window.innerWidth - margin ? rect.right + gap : Math.max(margin, rect.left - gap - width);
   const top = Math.min(Math.max(margin, rect.top - 8), window.innerHeight - height - margin);
-  // A page needs the full height. A tile's content takes only the height it needs, up to the same limit.
-  return { left, top, width, height: tall ? height : undefined, maxHeight: height };
+  return { left, top, width, height: tall ? limit : undefined, maxHeight: limit };
+}
+
+/**
+ * The floating window of a preview, placed beside the hovered item (rect is its place). After it is shown, its real height is
+ * measured and it is placed again, before the screen is drawn, so a short preview stays close to the item instead of moving up
+ * to make room for the tallest one it could be.
+ */
+function FloatingPreview({ rect, tall, contentKey, className, onEnter, onLeave, children }) {
+  const ref = useRef(null);
+  const [style, setStyle] = useState(() => placeBeside(rect, tall));
+  useLayoutEffect(() => {
+    const next = placeBeside(rect, tall, ref.current?.offsetHeight);
+    setStyle((old) => (JSON.stringify(old) === JSON.stringify(next) ? old : next));
+  }, [rect, tall, contentKey]);
+  return (
+    <div ref={ref} className={`max-preview${className ? ` ${className}` : ''}`} style={style} role="dialog" aria-label="Preview" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -233,7 +254,13 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
       </div>
 
       {preview && (
-        <div className="max-preview" style={placeBeside(preview.rect, preview.kind === 'link')} role="dialog" aria-label="Preview" onMouseEnter={keep} onMouseLeave={hide}>
+        <FloatingPreview
+          rect={preview.rect}
+          tall={preview.kind === 'link'}
+          contentKey={preview.kind === 'link' ? preview.link.url : preview.node.id}
+          onEnter={keep}
+          onLeave={hide}
+        >
           <div className="max-preview-bar">
             <span className="focus-title">{preview.kind === 'link' ? referenceName(preview.link) : preview.node.title}</span>
             <button type="button" className="ref-toggle" aria-label="Close preview" onClick={closeNow}>
@@ -249,7 +276,7 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
               <TileBody node={preview.node} tagColours={tagColours} />
             </div>
           )}
-        </div>
+        </FloatingPreview>
       )}
     </div>
   );
@@ -261,14 +288,7 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
  */
 export function TilePreviewWindow({ node, rect, tagColours, className, onEnter, onLeave, onClose }) {
   return (
-    <div
-      className={`max-preview${className ? ` ${className}` : ''}`}
-      style={placeBeside(rect, false)}
-      role="dialog"
-      aria-label="Preview"
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-    >
+    <FloatingPreview rect={rect} tall={false} contentKey={node.id} className={className} onEnter={onEnter} onLeave={onLeave}>
       <div className="max-preview-bar">
         <span className="focus-title">{node.title}</span>
         <button type="button" className="ref-toggle" aria-label="Close preview" onClick={onClose}>
@@ -278,6 +298,6 @@ export function TilePreviewWindow({ node, rect, tagColours, className, onEnter, 
       <div className="max-preview-body">
         <TileBody node={node} tagColours={tagColours} />
       </div>
-    </div>
+    </FloatingPreview>
   );
 }
