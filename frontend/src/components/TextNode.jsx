@@ -10,7 +10,7 @@ import { WikiField } from './wikilinks.jsx';
  * A label: free text written straight on the canvas, without a box. Double-click to write; click away to save.
  */
 export default function TextNode({ id, data, selected }) {
-  const { node, actions } = data;
+  const { node, actions, readOnly } = data;
   const [draft, setDraft] = useState(null);
   const text = node.commentary || '';
   const onDouble = useDoubleClick(() => setDraft(text));
@@ -25,16 +25,16 @@ export default function TextNode({ id, data, selected }) {
     <div
       className={`text-node${selected ? ' selected' : ''}`}
       style={node.width != null ? { width: node.width, minHeight: node.height } : undefined}
-      onClick={() => draft === null && onDouble()}
+      onClick={() => !readOnly && draft === null && onDouble()}
     >
       <SideHandles />
 
-      <NodeTools label={node.title} onEdit={() => actions.edit(id)} onRemove={() => actions.remove(id)} />
+      {!readOnly && <NodeTools label={node.title} onEdit={() => actions.edit(id)} onRemove={() => actions.remove(id)} />}
 
       <NodeResizer
         minWidth={120}
         minHeight={40}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         onResize={(_, box) => actions.resizeTile(id, box, false)}
         onResizeEnd={(_, box) => actions.resizeTile(id, box, true)}
         lineStyle={{ borderWidth: 6, borderColor: 'transparent' }}

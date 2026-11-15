@@ -85,23 +85,122 @@ final class NetworkController extends BaseController
     /** GET /api/networks/{id}/graph : the whole canvas in one call. */
     public function graph(Request $request, Response $response, array $args): Response
     {
-        $network = $this->findNetwork($args['id']);
+        return $this->json($response, $this->graphOf($this->findNetwork($args['id'])));
+    }
+
+    /**
+     * The whole canvas of a network as the client reads it.
+     *
+     * @param array<string, mixed> $network
+     * @return array<string, mixed>
+     */
+    private function graphOf(array $network): array
+    {
         $nodes = $this->db->fetchAll(
             'SELECT id, type, url, title, favicon_url, thumbnail_url, commentary, x, y, width, height, shape, style,
                     event_time, latitude, longitude, country, refs, tags, created_at, updated_at
              FROM nodes WHERE network_id = ? ORDER BY created_at',
-            [$args['id']]
+            [$network['id']]
         );
         $edges = $this->db->fetchAll(
             'SELECT id, source_id, target_id, relationship, is_bidirectional, style, tags
              FROM edges WHERE network_id = ? ORDER BY created_at',
-            [$args['id']]
+            [$network['id']]
         );
-        return $this->json($response, [
+        return [
             'network' => $this->summary($network + ['node_count' => count($nodes)]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null)],
             'nodes' => array_map([$this, 'nodeOut'], $nodes),
             'edges' => array_map([$this, 'edgeOut'], $edges),
-        ]);
+        ];
+    }
+
+    // ---- Sharing: a link that lets anyone read a network, and nothing more ----
+
+    /** GET /api/networks/{id}/share : whether this network is shared, and the secret of its link. */
+    public function shareStatus(Request $request, Response $response, array $args): Response
+    {
+        $token = $this->findNetwork($args['id'])['share_token'] ?? null;
+        return $this->json($response, ['shared' => $token !== null, 'token' => $token]);
+    }
+
+    /**
+     * POST /api/networks/{id}/share {regenerate?} : starts sharing, or returns the link that already exists. With regenerate the old
+     * link stops working and a new one is made.
+     */
+    public function share(Request $request, Response $response, array $args): Response
+    {
+        $network = $this->findNetwork($args['id']);
+        $data = $this->body($request);
+        $token = $network['share_token'] ?? null;
+        if ($token === null || !empty($data['regenerate'])) {
+            $token = bin2hex(random_bytes(24));
+            $this->db->execute('UPDATE networks SET share_token = ? WHERE id = ?', [$token, $args['id']]);
+        }
+        return $this->json($response, ['shared' => true, 'token' => $token]);
+    }
+
+    /** DELETE /api/networks/{id}/share : the link stops working. */
+    public function unshare(Request $request, Response $response, array $args): Response
+    {
+        $this->findNetwork($args['id']);
+        $this->db->execute('UPDATE networks SET share_token = NULL WHERE id = ?', [$args['id']]);
+        return $response->withStatus(204);
+    }
+
+    /** GET /api/shared/{token}/graph : the network of a share link, for anyone, to read. Nothing here can change it. */
+    public function sharedGraph(Request $request, Response $response, array $args): Response
+    {
+        return $this->json($response, $this->graphOf($this->findShared($args['token'])));
+    }
+
+    /**
+     * POST /api/shared/{token}/copy : a copy of a shared network in the account of the person who is signed in. Every tile and
+     * link gets a new id, so the copy is theirs to change and the original stays as it is.
+     */
+    public function copyShared(Request $request, Response $response, array $args): Response
+    {
+        if (Auth::required() && Auth::userId() === null) {
+            throw new ApiException(401, 'Log in to copy this graph into your account.');
+        }
+        $source = $this->findShared($args['token']);
+        $graph = $this->graphOf($source);
+
+        $newId = Database::uuid();
+        $ids = [];
+        $nodes = [];
+        foreach ($graph['nodes'] as $node) {
+            $ids[$node['id']] = Database::uuid();
+            $nodes[] = ['id' => $ids[$node['id']]] + $node;
+        }
+        $edges = [];
+        foreach ($graph['edges'] as $edge) {
+            if (!isset($ids[$edge['source_id']], $ids[$edge['target_id']])) {
+                continue;
+            }
+            $edges[] = ['id' => Database::uuid(), 'source_id' => $ids[$edge['source_id']], 'target_id' => $ids[$edge['target_id']]] + $edge;
+        }
+
+        $name = mb_substr((string) $source['name'], 0, 240) . ' (copy)';
+        $this->db->transaction(function (Database $db) use ($newId, $name, $source, $nodes, $edges): void {
+            $db->execute(
+                'INSERT INTO networks (id, name, user_id, tag_colors, cover_url, tile_color) VALUES (?, ?, ?, ?, ?, ?)',
+                [$newId, $name, Auth::userId(), $source['tag_colors'] ?? null, $source['cover_url'] ?? null, $source['tile_color'] ?? null]
+            );
+            $this->insertState($db, $newId, $nodes, $edges);
+        });
+        return $this->json($response, $this->summary($this->findNetwork($newId) + ['node_count' => count($nodes)]), 201);
+    }
+
+    /** The network that a share link opens, or 404 when the link was never made or has been stopped. */
+    private function findShared(string $token): array
+    {
+        $network = preg_match('/^[a-f0-9]{48}$/', $token)
+            ? $this->db->fetchOne('SELECT * FROM networks WHERE share_token = ?', [$token])
+            : null;
+        if ($network === null) {
+            throw new ApiException(404, 'This link is not shared, or sharing has been stopped.');
+        }
+        return $network;
     }
 
     /**
@@ -121,62 +220,74 @@ final class NetworkController extends BaseController
         $this->db->transaction(function (Database $db) use ($nodes, $edges, $args): void {
             $db->execute('DELETE FROM edges WHERE network_id = ?', [$args['id']]);
             $db->execute('DELETE FROM nodes WHERE network_id = ?', [$args['id']]);
-            foreach ($nodes as $n) {
-                if (!is_array($n) || !isset($n['id'])) {
-                    continue;
-                }
-                $type = (string) ($n['type'] ?? 'webpage');
-                $db->execute(
-                    'INSERT INTO nodes (id, network_id, type, url, title, favicon_url, thumbnail_url, commentary, x, y,
-                                        width, height, shape, style, event_time, latitude, longitude, country, refs, tags)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [
-                        (string) $n['id'],
-                        $args['id'],
-                        $type,
-                        $n['url'] ?? null,
-                        (string) ($n['title'] ?? ''),
-                        $n['favicon_url'] ?? null,
-                        $n['thumbnail_url'] ?? null,
-                        $n['commentary'] ?? null,
-                        (float) ($n['x'] ?? 0),
-                        (float) ($n['y'] ?? 0),
-                        isset($n['width']) ? (float) $n['width'] : null,
-                        isset($n['height']) ? (float) $n['height'] : null,
-                        in_array($n['shape'] ?? null, NodeController::SHAPES, true)
-                            ? $n['shape']
-                            : ($type === 'shape' ? 'rect' : null),
-                        Style::clean($n['style'] ?? null, Style::NODE_KEYS),
-                        $n['time'] ?? null,
-                        $n['latitude'] ?? null,
-                        $n['longitude'] ?? null,
-                        $n['country'] ?? null,
-                        $this->optionalReferences($n),
-                        $this->optionalTags($n),
-                    ]
-                );
-            }
-            foreach ($edges as $e) {
-                if (!is_array($e) || !isset($e['id'])) {
-                    continue;
-                }
-                $db->execute(
-                    'INSERT INTO edges (id, network_id, source_id, target_id, relationship, is_bidirectional, style, tags)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [
-                        (string) $e['id'],
-                        $args['id'],
-                        (string) $e['source_id'],
-                        (string) $e['target_id'],
-                        (string) $e['relationship'],
-                        !empty($e['is_bidirectional']) ? 1 : 0,
-                        Style::clean($e['style'] ?? null, Style::EDGE_KEYS),
-                        $this->optionalTags($e),
-                    ]
-                );
-            }
+            $this->insertState($db, $args['id'], $nodes, $edges);
         });
         return $response->withStatus(204);
+    }
+
+    /**
+     * Writes the tiles and links of a saved state into a network. The state is what the graph call returns; Undo uses it, and so
+     * does copying a shared network.
+     *
+     * @param array<int, mixed> $nodes
+     * @param array<int, mixed> $edges
+     */
+    private function insertState(Database $db, string $networkId, array $nodes, array $edges): void
+    {
+        foreach ($nodes as $n) {
+            if (!is_array($n) || !isset($n['id'])) {
+                continue;
+            }
+            $type = (string) ($n['type'] ?? 'webpage');
+            $db->execute(
+                'INSERT INTO nodes (id, network_id, type, url, title, favicon_url, thumbnail_url, commentary, x, y,
+                                    width, height, shape, style, event_time, latitude, longitude, country, refs, tags)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    (string) $n['id'],
+                    $networkId,
+                    $type,
+                    $n['url'] ?? null,
+                    (string) ($n['title'] ?? ''),
+                    $n['favicon_url'] ?? null,
+                    $n['thumbnail_url'] ?? null,
+                    $n['commentary'] ?? null,
+                    (float) ($n['x'] ?? 0),
+                    (float) ($n['y'] ?? 0),
+                    isset($n['width']) ? (float) $n['width'] : null,
+                    isset($n['height']) ? (float) $n['height'] : null,
+                    in_array($n['shape'] ?? null, NodeController::SHAPES, true)
+                        ? $n['shape']
+                        : ($type === 'shape' ? 'rect' : null),
+                    Style::clean($n['style'] ?? null, Style::NODE_KEYS),
+                    $n['time'] ?? null,
+                    $n['latitude'] ?? null,
+                    $n['longitude'] ?? null,
+                    $n['country'] ?? null,
+                    $this->optionalReferences($n),
+                    $this->optionalTags($n),
+                ]
+            );
+        }
+        foreach ($edges as $e) {
+            if (!is_array($e) || !isset($e['id'])) {
+                continue;
+            }
+            $db->execute(
+                'INSERT INTO edges (id, network_id, source_id, target_id, relationship, is_bidirectional, style, tags)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    (string) $e['id'],
+                    $networkId,
+                    (string) $e['source_id'],
+                    (string) $e['target_id'],
+                    (string) $e['relationship'],
+                    !empty($e['is_bidirectional']) ? 1 : 0,
+                    Style::clean($e['style'] ?? null, Style::EDGE_KEYS),
+                    $this->optionalTags($e),
+                ]
+            );
+        }
     }
 
     /**

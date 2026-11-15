@@ -18,6 +18,7 @@ export const wikiPattern = () => /\[\[([^\[\]|]+?)\s*(?:\|\s*([^\[\]|]*?)\s*)?(?
  *   suggest(typed, exceptId)     the titles of the tiles that begin with what has been typed, to offer while writing a link
  */
 export const WikiContext = createContext({
+  canCheckPages: true,
   exists: () => true,
   open: () => {},
   preview: () => {},

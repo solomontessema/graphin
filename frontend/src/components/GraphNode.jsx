@@ -29,7 +29,7 @@ function fitTitleSize(title, width, height) {
  */
 export default function GraphNode({ id, data, selected }) {
   const zoom = useStore((state) => state.transform[2]);
-  const { node, dim, highlight, actions, tagColours, tagMode } = data;
+  const { node, dim, highlight, actions, tagColours, tagMode, readOnly } = data;
   // Detail grows smoothly with the zoom instead of switching in steps. Under 40% only the title shows. Above that the
   // title shrinks gradually from its big far-out size to its normal size, the commentary appears one line at a time
   // (fading in) until 100%, where all of it shows, and the badge and picture fade in.
@@ -135,8 +135,8 @@ export default function GraphNode({ id, data, selected }) {
 
       <NodeTools
         label={node.title}
-        onEdit={() => actions.edit(id)}
-        onRemove={() => actions.remove(id)}
+        onEdit={readOnly ? undefined : () => actions.edit(id)}
+        onRemove={readOnly ? undefined : () => actions.remove(id)}
         onMaximize={() => actions.maximize(id)}
       />
 
@@ -145,7 +145,7 @@ export default function GraphNode({ id, data, selected }) {
         minWidth={140}
         minHeight={70}
         keepAspectRatio={node.shape === 'circle'}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         onResize={(_, box) => actions.resizeTile(id, box, false)}
         onResizeEnd={(_, box) => actions.resizeTile(id, box, true)}
         lineStyle={{ borderWidth: 6, borderColor: 'transparent' }}

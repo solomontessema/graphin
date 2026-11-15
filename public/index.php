@@ -98,6 +98,7 @@ if ($db->driver() === 'sqlite') {
     $db->ensureColumn('networks', 'tag_colors', 'TEXT NULL');
     $db->ensureColumn('networks', 'cover_url', 'TEXT NULL');
     $db->ensureColumn('networks', 'tile_color', 'TEXT NULL');
+    $db->ensureColumn('networks', 'share_token', 'TEXT NULL');
     // Unused on the desktop (no accounts), but the same queries run there.
     $db->ensureColumn('networks', 'user_id', 'TEXT NULL');
     // Containers (groups) no longer exist. Remove any an older database still holds, with their links.
@@ -166,7 +167,9 @@ $app->add(function (Request $request, \Psr\Http\Server\RequestHandlerInterface $
         return $reply(403, 'This request did not come from Graphin.');
     }
     // Everything except health and signing in needs a signed-in user.
-    $open = $path === '/api/health' || str_starts_with($path, '/api/auth/');
+    // A share link opens a network to read without signing in. Copying a shared network still needs an account: the
+    // controller checks that.
+    $open = $path === '/api/health' || str_starts_with($path, '/api/auth/') || str_starts_with($path, '/api/shared/');
     if ($authRequired && !$open && Auth::userId() === null) {
         return $reply(401, 'Please log in.');
     }
@@ -189,6 +192,11 @@ $app->delete('/api/networks/{id}', [new NetworkController($db), 'destroy']);
 $app->get('/api/networks/{id}/graph', [new NetworkController($db), 'graph']);
 $app->put('/api/networks/{id}/positions', [new NetworkController($db), 'positions']);
 $app->put('/api/networks/{id}/restore', [new NetworkController($db), 'restore']);
+$app->get('/api/networks/{id}/share', [new NetworkController($db), 'shareStatus']);
+$app->post('/api/networks/{id}/share', [new NetworkController($db), 'share']);
+$app->delete('/api/networks/{id}/share', [new NetworkController($db), 'unshare']);
+$app->get('/api/shared/{token}/graph', [new NetworkController($db), 'sharedGraph']);
+$app->post('/api/shared/{token}/copy', [new NetworkController($db), 'copyShared']);
 $app->get('/api/embeddable', [new PageController($db), 'embeddable']);
 
 $app->post('/api/networks/{id}/nodes', [new NodeController($db), 'store']);

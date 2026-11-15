@@ -91,6 +91,9 @@ ALTER TABLE networks ADD COLUMN IF NOT EXISTS tag_colors TEXT NULL;
 ALTER TABLE networks ADD COLUMN IF NOT EXISTS cover_url TEXT NULL;
 -- The background colour of the network's tile on the home page, such as #1d4ed8, or none.
 ALTER TABLE networks ADD COLUMN IF NOT EXISTS tile_color VARCHAR(7) NULL;
+-- The secret of the network's share link (48 hex characters), or NULL when it is not shared. Anyone with the link can read the network.
+ALTER TABLE networks ADD COLUMN IF NOT EXISTS share_token CHAR(48) NULL;
+ALTER TABLE networks ADD UNIQUE KEY IF NOT EXISTS uq_networks_share (share_token);
 
 -- Accounts. The email address is the username (always lower-case). Only a password hash is stored.
 -- Each network belongs to one user.

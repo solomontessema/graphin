@@ -12,6 +12,15 @@ function readNetworkId() {
   return match ? match[1] : null;
 }
 
+/** The secret of a share link, as in #/shared/{token}, or null. */
+function readSharedToken() {
+  const match = window.location.hash.match(/^#\/shared\/([a-f0-9]{48})$/);
+  return match ? match[1] : null;
+}
+
+// A shared graph that someone chose to copy before they were signed in: the copy is made as soon as they are.
+const PENDING_COPY = 'graphin:pending-copy';
+
 /** The link from an email, as in #/verify?token=… or #/reset?token=…: { kind, token }, or null. */
 function readAccountLink() {
   const match = window.location.hash.match(/^#\/(verify|reset)\?token=([a-f0-9]{64})$/);
@@ -24,6 +33,8 @@ const isCapturePage = () => window.location.pathname === '/capture' || new URLSe
 
 export default function App() {
   const [networkId, setNetworkId] = useState(readNetworkId);
+  // A graph opened from a share link, read-only, with or without an account.
+  const [sharedToken, setSharedToken] = useState(readSharedToken);
   // Who is signed in: null while we ask the server, then { mode, user }. mode "local" means no accounts (the desktop app).
   const [auth, setAuth] = useState(null);
   // A link from an email that is being handled (confirm an address, or choose a new password).
@@ -34,6 +45,7 @@ export default function App() {
   useEffect(() => {
     const onHashChange = () => {
       setNetworkId(readNetworkId());
+      setSharedToken(readSharedToken());
       setAccountLink(readAccountLink());
     };
     window.addEventListener('hashchange', onHashChange);
@@ -68,11 +80,54 @@ export default function App() {
     setAuth({ mode: 'accounts', user: null });
   }
 
+  /** Makes the signed-in person's own copy of a shared graph and opens it. */
+  async function makeCopy(token) {
+    try {
+      const created = await api.copyShared(token);
+      window.location.hash = `#/networks/${created.id}`;
+    } catch (e) {
+      window.alert(e.message);
+    }
+  }
+
+  // The copy someone asked for before signing in is made as soon as they are signed in.
+  const signedIn = Boolean(auth?.user);
+  useEffect(() => {
+    if (!signedIn) return;
+    let token = null;
+    try {
+      token = window.sessionStorage.getItem(PENDING_COPY);
+      window.sessionStorage.removeItem(PENDING_COPY);
+    } catch {
+      // Without session storage there is nothing to pick up.
+    }
+    if (token) makeCopy(token);
+  }, [signedIn]);
+
+  function copyShared(token) {
+    if (signedIn) {
+      makeCopy(token);
+      return;
+    }
+    // A copy needs an account. Log in or sign up first; the copy is made right afterwards.
+    try {
+      window.sessionStorage.setItem(PENDING_COPY, token);
+    } catch {
+      // Without session storage the person copies again after signing in.
+    }
+    setNotice('Log in or create a free account, and the graph is copied into it.');
+    window.location.hash = '';
+  }
+
   if (auth === null) {
     return <div className="boot" aria-busy="true" />;
   }
   if (accountLink) {
     return <AccountLink kind={accountLink.kind} token={accountLink.token} onSignedIn={signedInFromLink} onBack={leaveAccountLink} />;
+  }
+  // A share link opens the graph to read, whether or not anyone is signed in.
+  if (sharedToken) {
+    return <NetworkView key={sharedToken} networkId={sharedToken} user={auth.user} readOnly onCopy={() => copyShared(sharedToken)} />;
   }
   if (auth.mode === 'accounts' && !auth.user) {
     // The bookmarklet window has no room for a landing page: it asks to sign in first.

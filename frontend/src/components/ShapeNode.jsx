@@ -54,7 +54,7 @@ function dashArray(dash, weight) {
  * or move them. Select it to change its shape, line and shade; drag its edges to resize it.
  */
 export default function ShapeNode({ id, data, selected }) {
-  const { node, actions } = data;
+  const { node, actions, readOnly } = data;
   const style = { ...SHAPE_DEFAULTS, ...(node.style || {}) };
   const kind = node.shape || 'rect';
   const fill = withOpacity(style.fill, style.opacity);
@@ -68,7 +68,7 @@ export default function ShapeNode({ id, data, selected }) {
         minWidth={40}
         minHeight={40}
         keepAspectRatio={kind === 'circle'}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         onResize={(_, box) => actions.resizeTile(id, box, false)}
         onResizeEnd={(_, box) => actions.resizeTile(id, box, true)}
         lineStyle={{ borderWidth: 6, borderColor: 'transparent' }}
@@ -103,7 +103,7 @@ export default function ShapeNode({ id, data, selected }) {
         </div>
       )}
 
-      <NodeToolbar isVisible={selected} position={Position.Top} offset={10}>
+      <NodeToolbar isVisible={selected && !readOnly} position={Position.Top} offset={10}>
         <div className="shape-panel nodrag nopan nowheel" onPointerDown={(e) => e.stopPropagation()}>
           <label>
             Shape

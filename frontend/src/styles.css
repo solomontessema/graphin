@@ -1934,3 +1934,11 @@ button.on {
 /* Wiki links inside a note: the note's own link style (blue, underlined) must not apply to them. */
 .rich a.wikilink { color: #6d28d9; text-decoration: none; }
 .rich a.wikilink-missing { color: #b42318; }
+
+/* A hidden control stays hidden even where a rule gives it a display of its own. Used for the editing controls of a shared graph. */
+[hidden] { display: none !important; }
+.network-title.static { cursor: default; }
+.network-title.static:hover { background: none; }
+
+/* The link in the share dialog. */
+.share-link { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border, #cbd5e1); border-radius: 6px; background: var(--surface, #fff); color: var(--text, #111827); }

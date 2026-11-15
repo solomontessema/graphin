@@ -3,6 +3,7 @@ import { hostFromUrl } from '../utils.js';
 import { KIND_LABEL, kindOf } from '../links.js';
 import PageView, { useFramable } from './PageView.jsx';
 import ImageViewer from './ImageViewer.jsx';
+import { useWiki } from './wikilinks.jsx';
 
 // The player address for a video link that can be shown in a frame, or null.
 function videoEmbed(url) {
@@ -184,7 +185,11 @@ export function ReferencePreview({ reference }) {
   const kind = kindOf(reference.url);
   const image = kind === 'image';
   const embed = kind === 'video' ? videoEmbed(reference.url) : null;
-  const framable = useFramable(image || embed ? null : reference.url);
+  // Whether a page can be shown in a frame is asked of the server, which only answers signed-in people. Anyone looking at a share
+  // link without an account gets the plain "Read on …" link for pages instead.
+  const wiki = useWiki();
+  const asked = useFramable(image || embed || !wiki.canCheckPages ? null : reference.url);
+  const framable = wiki.canCheckPages ? asked : false;
   return (
     <div className="ref-preview">
       {image ? (

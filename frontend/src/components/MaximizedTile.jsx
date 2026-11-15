@@ -231,9 +231,11 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
           <span className="focus-title">{node.title}</span>
         </div>
         <div className="max-actions">
-          <button type="button" className="ghost small" onClick={onEdit}>
-            Edit
-          </button>
+          {onEdit && (
+            <button type="button" className="ghost small" onClick={onEdit}>
+              Edit
+            </button>
+          )}
           <button type="button" className="ghost small" onClick={onClose} aria-label="Close maximized tile">
             ×
           </button>

@@ -46,6 +46,12 @@ export const api = {
   graph: (id) => request('GET', `/networks/${id}/graph`),
   savePositions: (id, items) => request('PUT', `/networks/${id}/positions`, items),
   restoreState: (id, state) => request('PUT', `/networks/${id}/restore`, state),
+  // Share links: the owner's controls, and what a visitor of a link uses (read it, or copy it into their own account).
+  shareStatus: (id) => request('GET', `/networks/${id}/share`),
+  share: (id, regenerate = false) => request('POST', `/networks/${id}/share`, { regenerate }),
+  unshare: (id) => request('DELETE', `/networks/${id}/share`),
+  sharedGraph: (token) => request('GET', `/shared/${token}/graph`),
+  copyShared: (token) => request('POST', `/shared/${token}/copy`),
   embeddable: (url) => request('GET', `/embeddable?url=${encodeURIComponent(url)}`),
   createNode: (networkId, data) => request('POST', `/networks/${networkId}/nodes`, data),
   updateNode: (id, data) => request('PUT', `/nodes/${id}`, data),

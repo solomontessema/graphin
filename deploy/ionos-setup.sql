@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS `networks` (
   `cover_url` text DEFAULT NULL,
   `tile_color` varchar(7) DEFAULT NULL,
   `user_id` char(36) DEFAULT NULL,
+  `share_token` char(48) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_networks_share` (`share_token`),
   KEY `idx_networks_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `nodes` (

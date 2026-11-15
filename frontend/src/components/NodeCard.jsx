@@ -30,6 +30,7 @@ export default function NodeCard({
   onShape,
   allTags,
   tagColours,
+  readOnly = false,
 }) {
   return (
     <div className="node-card" style={style} role="dialog" aria-label={node.title} onMouseEnter={onEnter} onMouseLeave={onLeave}>
@@ -39,9 +40,11 @@ export default function NodeCard({
           <strong title={node.title}>{node.title}</strong>
         </div>
         <div className="card-actions">
-          <button className="ghost small" onClick={() => onMode(mode === 'edit' ? 'preview' : 'edit')}>
-            {mode === 'edit' ? 'Preview' : 'Edit'}
-          </button>
+          {!readOnly && (
+            <button className="ghost small" onClick={() => onMode(mode === 'edit' ? 'preview' : 'edit')}>
+              {mode === 'edit' ? 'Preview' : 'Edit'}
+            </button>
+          )}
           {linksOf(node)[0] && (
             <a href={linksOf(node)[0].url} target="_blank" rel="noreferrer">
               Open ↗
@@ -53,7 +56,7 @@ export default function NodeCard({
         </div>
       </header>
 
-      {mode === 'edit' ? (
+      {mode === 'edit' && !readOnly ? (
         <DetailsBody
           key={node.id}
           node={node}

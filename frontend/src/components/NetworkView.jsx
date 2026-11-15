@@ -25,6 +25,7 @@ import TimeBar from './TimeBar.jsx';
 import { parseYear, toPosition } from '../timeScale.js';
 import { MAP_HEIGHT, MAP_WIDTH } from '../worldMap.js';
 import BookmarkletDialog from './BookmarkletDialog.jsx';
+import ShareDialog from './ShareDialog.jsx';
 import { LAYOUTS, computeLayout } from '../layouts.js';
 
 import BendEdge from './BendEdge.jsx';
@@ -171,15 +172,19 @@ function firstLine(text, max) {
   return text.trim().split('\n')[0].slice(0, max);
 }
 
-export default function NetworkView({ networkId, user, onLogout }) {
+/**
+ * A network on a canvas. With readOnly it is the page of a share link: networkId is the link's secret, the graph is read from the
+ * share endpoint, and nothing can be changed. onCopy copies the shared graph into the account of whoever is looking at it.
+ */
+export default function NetworkView({ networkId, user, onLogout, readOnly = false, onCopy }) {
   return (
     <ReactFlowProvider>
-      <Board networkId={networkId} user={user} onLogout={onLogout} />
+      <Board networkId={networkId} user={user} onLogout={onLogout} readOnly={readOnly} onCopy={onCopy} />
     </ReactFlowProvider>
   );
 }
 
-function Board({ networkId, user, onLogout }) {
+function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   const { screenToFlowPosition, flowToScreenPosition, fitView, getNode, getViewport } = useReactFlow();
   const [networkName, setNetworkName] = useState('');
   const [renamingNetwork, setRenamingNetwork] = useState(false);
@@ -243,6 +248,8 @@ function Board({ networkId, user, onLogout }) {
       return tiles.find((n) => n.title.trim().toLowerCase() === wanted) || tiles.find((n) => n.id === String(target).trim()) || null;
     };
     return {
+      // Whether a page's frameability can be checked: that needs an account, so it is not offered to a visitor of a share link.
+      canCheckPages: !readOnly || Boolean(user),
       exists: (target) => find(target) !== null,
       open: (target) => {
         const tile = find(target);
@@ -270,7 +277,7 @@ function Board({ networkId, user, onLogout }) {
         return [...new Set(titles)].sort((a, b) => a.localeCompare(b)).slice(0, 8);
       },
     };
-  }, []);
+  }, [readOnly, Boolean(user)]);
   useEffect(() => () => clearTimeout(wikiTimer.current), []);
   // The kind of item the right-hand toolbar is placing ("webpage", "pdf", "image" or "note"), or null.
   // While it is set, the next click on the canvas puts a new item there.
@@ -320,6 +327,7 @@ function Board({ networkId, user, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addType, drawKind]);
   const [showBookmarklet, setShowBookmarklet] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   // How tightly the force-directed layout packs items, 0 (loose) to 100 (tight).
   const [compactness, setCompactness] = useState(50);
@@ -495,6 +503,8 @@ function Board({ networkId, user, onLogout }) {
   // Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes. While a text box has focus the keys edit the text instead.
   useEffect(() => {
     const onKey = (event) => {
+      // A shared network cannot be changed, so there is nothing to undo.
+      if (readOnly) return;
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLowerCase();
@@ -511,8 +521,7 @@ function Board({ networkId, user, onLogout }) {
   });
 
   useEffect(() => {
-    api
-      .graph(networkId)
+    (readOnly ? api.sharedGraph(networkId) : api.graph(networkId))
       .then((graph) => {
         setNetworkName(graph.network.name);
         setTagColours(graph.network.tag_colors || {});
@@ -530,7 +539,7 @@ function Board({ networkId, user, onLogout }) {
   // Shows changes made elsewhere at once: the browser extension tells this page when it saves to this network, and the
   // page also reloads when its tab is shown again. Nothing is reloaded while a tile is being dragged.
   useEffect(() => {
-    if (!loaded) return undefined;
+    if (!loaded || readOnly) return undefined;
     let live = true;
     const refresh = () => {
       if (!live || document.hidden || document.querySelector('.react-flow__node.dragging')) return;
@@ -762,17 +771,21 @@ function Board({ networkId, user, onLogout }) {
             dim: matches !== null && !matches.has(n.id),
             tagColours,
             tagMode,
-            actions: {
-              resizeTile,
-              styleShape,
-              saveText,
-              edit: (id) => actionsRef.current.edit(id),
-              maximize: (id) => actionsRef.current.maximize(id),
-              remove: (id) => actionsRef.current.remove(id),
-            },
+            // On a shared network a tile can only be opened and read: the tools that change it are not offered.
+            readOnly,
+            actions: readOnly
+              ? { maximize: (id) => actionsRef.current.maximize(id) }
+              : {
+                  resizeTile,
+                  styleShape,
+                  saveText,
+                  edit: (id) => actionsRef.current.edit(id),
+                  maximize: (id) => actionsRef.current.maximize(id),
+                  remove: (id) => actionsRef.current.remove(id),
+                },
           },
         })),
-    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode]
+    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode, readOnly]
   );
 
   // The middle of every item, to pick the side each arrow leaves and arrives on.
@@ -795,9 +808,10 @@ function Board({ networkId, user, onLogout }) {
   const edgeHandlers = useRef({});
   edgeHandlers.current = {
     // Moves a point of the link's line while it is dragged. It is saved when the drag ends.
-    move: (id, pts) => setEdges((es) => es.map((e) => (e.id === id ? { ...e, style: withPts(e.style, pts) } : e))),
-    commit: (id, pts) => updateEdgeStyle(id, withPts(edges.find((e) => e.id === id)?.style, pts)),
-    reset: (id) => updateEdgeStyle(id, withoutBend(edges.find((e) => e.id === id)?.style)),
+    // On a shared network the lines cannot be bent.
+    move: (id, pts) => !readOnly && setEdges((es) => es.map((e) => (e.id === id ? { ...e, style: withPts(e.style, pts) } : e))),
+    commit: (id, pts) => !readOnly && updateEdgeStyle(id, withPts(edges.find((e) => e.id === id)?.style, pts)),
+    reset: (id) => !readOnly && updateEdgeStyle(id, withoutBend(edges.find((e) => e.id === id)?.style)),
     click: (event, id) => onEdgeClick(event, { id }),
   };
   const edgeActions = useMemo(
@@ -880,6 +894,8 @@ function Board({ networkId, user, onLogout }) {
   async function chooseTagColour(tag, colour) {
     const next = { ...tagColours, [tag]: colour };
     setTagColours(next);
+    // On a shared network the colours change on this screen only.
+    if (readOnly) return;
     try {
       await api.setTagColours(networkId, next);
     } catch (e) {
@@ -890,6 +906,7 @@ function Board({ networkId, user, onLogout }) {
   // Renames a tag on every tile and link that carries it. Renaming it to a tag already in use merges the two. A null
   // name removes the tag everywhere.
   async function retag(from, to) {
+    if (readOnly) return;
     const swap = (tags) => {
       const out = [];
       for (const tag of tags || []) {
@@ -1135,6 +1152,7 @@ function Board({ networkId, user, onLogout }) {
 
   // Clicking a link opens a small card to change its colour and weight, beside the click.
   function onEdgeClick(event, edge) {
+    if (readOnly) return;
     if (painting) {
       paintEdge(edge);
       return;
@@ -1457,6 +1475,7 @@ function Board({ networkId, user, onLogout }) {
 
   function onDrop(event) {
     event.preventDefault();
+    if (readOnly) return;
     const text = event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain');
     if (!text.trim()) return;
     const at = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -1479,12 +1498,16 @@ function Board({ networkId, user, onLogout }) {
     <div className={`board${addType || drawing ? ' placing' : ''}${connecting ? ' connecting' : ''}${painting ? ' painting' : ''}`}>
       <header className="toolbar">
         <a className="back" href="#/">
-          ← Networks
+          {readOnly ? (user ? '← My graphs' : 'Graphin') : '← Networks'}
         </a>
-        {renamingNetwork ? (
+        {renamingNetwork && !readOnly ? (
           <NameEditor name={networkName} className="title-editor" onSave={renameNetwork} onCancel={() => setRenamingNetwork(false)} />
         ) : (
-          <h2 className="network-title" title="Click to rename" onClick={() => setRenamingNetwork(true)}>
+          <h2
+            className={`network-title${readOnly ? ' static' : ''}`}
+            title={readOnly ? undefined : 'Click to rename'}
+            onClick={readOnly ? undefined : () => setRenamingNetwork(true)}
+          >
             {networkName}
           </h2>
         )}
@@ -1522,6 +1545,7 @@ function Board({ networkId, user, onLogout }) {
         </button>
         <button
           className="ghost"
+          hidden={readOnly}
           onClick={() => setShowMap(!showMap)}
           aria-pressed={showMap}
           title={placedCount > 0 ? `${placedCount} of ${rfNodes.length} items have a place. ${showMap ? 'Turn the map off.' : 'Turn the map on to see them.'}` : 'No item has a place yet. Add a latitude and longitude in an item\'s card.'}
@@ -1541,14 +1565,15 @@ function Board({ networkId, user, onLogout }) {
         <button className="ghost" onClick={fitShown}>
           Fit
         </button>
-        <button className="ghost icon-button" onClick={undo} disabled={history.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo">
+        <button className="ghost icon-button" hidden={readOnly} onClick={undo} disabled={history.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo">
           ↶
         </button>
-        <button className="ghost icon-button" onClick={redo} disabled={history.current.future.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo">
+        <button className="ghost icon-button" hidden={readOnly} onClick={redo} disabled={history.current.future.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo">
           ↷
         </button>
         <button
           className="ghost icon-button"
+          hidden={readOnly}
           onClick={() => setPainting(painting ? null : 'source')}
           aria-pressed={Boolean(painting)}
           aria-label="Match style"
@@ -1558,7 +1583,7 @@ function Board({ networkId, user, onLogout }) {
             <path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z" />
           </svg>
         </button>
-        <div className="layout-menu">
+        <div className="layout-menu" hidden={readOnly}>
           <button className="ghost" onClick={() => setLayoutOpen((open) => !open)} aria-expanded={layoutOpen}>
             Layout ▾
           </button>
@@ -1588,10 +1613,23 @@ function Board({ networkId, user, onLogout }) {
             </ul>
           )}
         </div>
-        <button className="ghost" onClick={() => setShowBookmarklet(true)}>
+        <button className="ghost" hidden={readOnly} onClick={() => setShowBookmarklet(true)}>
           Bookmarklet
         </button>
-        {user && (
+        {!readOnly && (
+          <button className="ghost" onClick={() => setShareOpen(true)} title="Share this graph as a read-only link">
+            Share
+          </button>
+        )}
+        {readOnly ? (
+          <div className="toolbar-account">
+            <span className="muted small">Shared read-only</span>
+            <button onClick={onCopy} title="Make your own editable copy of this graph">
+              Copy to my account
+            </button>
+          </div>
+        ) : (
+          user && (
           <div className="toolbar-account">
             <span className="avatar" title={user.email} aria-label={`Signed in as ${user.email}`}>
               {user.email.charAt(0).toUpperCase()}
@@ -1600,6 +1638,7 @@ function Board({ networkId, user, onLogout }) {
               Log out
             </button>
           </div>
+          )
         )}
       </header>
 
@@ -1625,6 +1664,8 @@ function Board({ networkId, user, onLogout }) {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onMoveStart={onMoveStart}
@@ -1673,7 +1714,7 @@ function Board({ networkId, user, onLogout }) {
           </button>
         </div>
 
-        <RightToolbar onAdd={chooseAdd} />
+        {!readOnly && <RightToolbar onAdd={chooseAdd} />}
 
         {tagPanelOpen && (
           <TagPanel
@@ -1739,6 +1780,7 @@ function Board({ networkId, user, onLogout }) {
             onShape={(shape) => changeShape(activeNode.id, shape)}
             allTags={tagNames}
             tagColours={tagColours}
+            readOnly={readOnly}
           />
         )}
       </div>
@@ -1750,10 +1792,14 @@ function Board({ networkId, user, onLogout }) {
             relations={relationsOf(maximized.id)}
             onOpenTile={(id) => setMaximized({ id })}
             tagColours={tagColours}
-            onEdit={() => {
-              setMaximized(null);
-              openEditCard(maximized.id);
-            }}
+            onEdit={
+              readOnly
+                ? undefined
+                : () => {
+                    setMaximized(null);
+                    openEditCard(maximized.id);
+                  }
+            }
             onClose={() => setMaximized(null)}
           />
         </div>
@@ -1790,6 +1836,7 @@ function Board({ networkId, user, onLogout }) {
       )}
 
       {showBookmarklet && <BookmarkletDialog onClose={() => setShowBookmarklet(false)} />}
+      {shareOpen && <ShareDialog networkId={networkId} onClose={() => setShareOpen(false)} />}}
 
       {wikiPreview && (
         <TilePreviewWindow
