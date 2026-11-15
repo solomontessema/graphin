@@ -11,8 +11,7 @@ import {
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
-import { ReferenceViewer, referenceName } from './ReferencesBadge.jsx';
-import { linksOf } from '../links.js';
+import MaximizedTile from './MaximizedTile.jsx';
 import EdgeCard from './EdgeCard.jsx';
 import RightToolbar, { ITEMS } from './RightToolbar.jsx';
 import { convertShape } from '../shapes.js';
@@ -217,7 +216,7 @@ function Board({ networkId, user, onLogout }) {
   const [pending, setPending] = useState(null);
   // The style card for a link: { id, left, top }, opened by clicking the link.
   const [edgeCard, setEdgeCard] = useState(null);
-  // A tile's references shown large over the whole canvas, with no lines between tiles: { references, active }.
+  // The tile shown enlarged over the whole canvas, with no lines between tiles: { id }.
   const [maximized, setMaximized] = useState(null);
 
   useEffect(() => {
@@ -1287,14 +1286,11 @@ function Board({ networkId, user, onLogout }) {
   }
 
   // The icons on nodes call these through actionsRef, so they always reach the current functions.
-  // Shows a tile's references large over the canvas.
+  // Enlarges a tile to fill the canvas.
   function openMaximized(id) {
-    const node = rfNodes.find((n) => n.id === id)?.data.node;
-    const references = node ? linksOf(node) : [];
-    if (references.length === 0) return;
     closeCard();
     setEdgeCard(null);
-    setMaximized({ references, active: 0 });
+    setMaximized({ id });
   }
 
   actionsRef.current = {
@@ -1669,21 +1665,17 @@ function Board({ networkId, user, onLogout }) {
         )}
       </div>
 
-      {maximized && (
-        <div className="focus-view" role="dialog" aria-label="Maximized references">
-          <div className="focus-bar">
-            <span className="focus-title">{referenceName(maximized.references[Math.min(maximized.active, maximized.references.length - 1)])}</span>
-            <button type="button" className="ghost small" onClick={() => setMaximized(null)} aria-label="Close maximized view">
-              ×
-            </button>
-          </div>
-          <div className="ref-body focus-body">
-            <ReferenceViewer
-              references={maximized.references}
-              active={maximized.active}
-              onPick={(i) => setMaximized((m) => (m ? { ...m, active: i } : m))}
-            />
-          </div>
+      {maximized && rfNodes.find((n) => n.id === maximized.id) && (
+        <div className="focus-view" role="dialog" aria-label="Maximized tile">
+          <MaximizedTile
+            node={rfNodes.find((n) => n.id === maximized.id).data.node}
+            tagColours={tagColours}
+            onEdit={() => {
+              setMaximized(null);
+              openEditCard(maximized.id);
+            }}
+            onClose={() => setMaximized(null)}
+          />
         </div>
       )}
 

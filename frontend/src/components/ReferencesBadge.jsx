@@ -16,7 +16,7 @@ function videoEmbed(url) {
 export const referenceName = (reference) => reference.title || hostFromUrl(reference.url);
 
 /** A small icon for what a reference points to: a web page, a PDF, a video or a picture. Its name is the tooltip. */
-function KindIcon({ kind }) {
+export function KindIcon({ kind }) {
   return (
     <svg className="ref-icon" viewBox="0 0 16 16" role="img" aria-label={KIND_LABEL[kind]}>
       <title>{KIND_LABEL[kind]}</title>

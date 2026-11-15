@@ -137,7 +137,7 @@ export default function GraphNode({ id, data, selected }) {
         label={node.title}
         onEdit={() => actions.edit(id)}
         onRemove={() => actions.remove(id)}
-        onMaximize={links.length > 0 ? () => actions.maximize(id) : undefined}
+        onMaximize={() => actions.maximize(id)}
       />
 
       {/* Dragging an edge of a selected tile changes its size. The stored height is the least it can be. */}
