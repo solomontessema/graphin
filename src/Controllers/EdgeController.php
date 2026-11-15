@@ -96,11 +96,21 @@ final class EdgeController extends BaseController
         }
 
         // Changing an arrow by hand takes it over: from now on it is no longer made or removed by the wiki links in the text.
-        $this->db->execute(
-            'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?, wikilink = 0
-             WHERE id = ?',
-            [$style, $source, $target, $relationship, $bidirectional, $tags, $args['id']]
-        );
+        // A database that does not have the wikilink column yet (see deploy/migrate-wikilink-edges.sql) still saves the change.
+        $fields = [$style, $source, $target, $relationship, $bidirectional, $tags, $args['id']];
+        try {
+            $this->db->execute(
+                'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?, wikilink = 0
+                 WHERE id = ?',
+                $fields
+            );
+        } catch (\Throwable $e) {
+            $this->db->execute(
+                'UPDATE edges SET style = ?, source_id = ?, target_id = ?, relationship = ?, is_bidirectional = ?, tags = ?
+                 WHERE id = ?',
+                $fields
+            );
+        }
 
         $row = $this->db->fetchOne(
             'SELECT id, source_id, target_id, relationship, is_bidirectional, style, tags FROM edges WHERE id = ?',
