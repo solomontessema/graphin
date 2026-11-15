@@ -6,6 +6,7 @@ namespace Graphin\Controllers;
 use Graphin\ApiException;
 use Graphin\Style;
 use Graphin\Database;
+use Graphin\WikiLinks;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -34,6 +35,7 @@ final class NodeController extends BaseController
             $url = null;
         }
         $id = Database::uuid();
+        $commentary = $this->optionalString($data, 'commentary', self::COMMENTARY_MAX);
 
         $this->db->execute(
             'INSERT INTO nodes (id, network_id, type, url, title, favicon_url, thumbnail_url, commentary, x, y, width, height, shape, style,
@@ -47,7 +49,7 @@ final class NodeController extends BaseController
                 $title,
                 $this->optionalUrl($data, 'favicon_url'),
                 $this->optionalUrl($data, 'thumbnail_url'),
-                $this->optionalString($data, 'commentary', self::COMMENTARY_MAX),
+                $commentary,
                 $this->number($data, 'x'),
                 $this->number($data, 'y'),
                 $isShape ? $this->number($data, 'width', 600.0) : null,
@@ -62,7 +64,7 @@ final class NodeController extends BaseController
                 $isShape ? null : $this->optionalTags($data),
             ]
         );
-        return $this->json($response, $this->findNodeOut($id), 201);
+        return $this->json($response, $this->withNewLinks($this->findNodeOut($id), WikiLinks::sync($this->db, $args['id'], $id, $title, $commentary)), 201);
     }
 
     /** PUT /api/nodes/{id} : a field left out keeps its value. */
@@ -105,7 +107,23 @@ final class NodeController extends BaseController
              WHERE id = ?',
             [$title, $url, $commentary, $shape, $style, $time, $latitude, $longitude, $country, $refs, $tags, $args['id']]
         );
-        return $this->json($response, $this->findNodeOut($args['id']));
+        return $this->json($response, $this->withNewLinks($this->findNodeOut($args['id']), WikiLinks::sync($this->db, $node['network_id'], $args['id'], $title, $commentary)));
+    }
+
+    /**
+     * The tile as sent back to the client. When wiki links in its text made new links, they come with it as new_edges, so the
+     * client can draw the arrows without reloading.
+     *
+     * @param array<string, mixed> $out
+     * @param list<array<string, mixed>> $newEdges
+     * @return array<string, mixed>
+     */
+    private function withNewLinks(array $out, array $newEdges): array
+    {
+        if ($newEdges !== []) {
+            $out['new_edges'] = $newEdges;
+        }
+        return $out;
     }
 
     /** DELETE /api/nodes/{id} : its edges are removed with it. */

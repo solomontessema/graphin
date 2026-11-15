@@ -4,6 +4,7 @@ import NodeTools from './NodeTools.jsx';
 import SideHandles from './SideHandles.jsx';
 import { useDoubleClick } from '../useDoubleClick.js';
 import RichText from './RichText.jsx';
+import { WikiField } from './wikilinks.jsx';
 
 /**
  * A label: free text written straight on the canvas, without a box. Double-click to write; click away to save.
@@ -42,12 +43,13 @@ export default function TextNode({ id, data, selected }) {
       {draft === null ? (
         <div className="text-body">{text ? <RichText text={text} /> : <span className="muted">Double-click to write</span>}</div>
       ) : (
-        <textarea
+        <WikiField
           className="text-input nodrag nowheel"
           autoFocus
+          exceptId={id}
           onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onValue={setDraft}
           onBlur={finish}
           onKeyDown={(e) => {
             if (e.key === 'Escape') setDraft(null);

@@ -4,6 +4,7 @@ import { asHttpUrl, hostFromUrl } from '../utils.js';
 import { referenceName } from './ReferencesBadge.jsx';
 import { KIND_LABEL, kindOf, linksOf, mediaOf } from '../links.js';
 import { tagColour } from '../tags.js';
+import { WikiField } from './wikilinks.jsx';
 import StyleEditor from './StyleEditor.jsx';
 import TagEditor from './TagEditor.jsx';
 
@@ -205,11 +206,14 @@ function DetailsBody({ node, edges, titles, onChange, onDelete, onDeleteEdge, on
       <form className="details-form" onSubmit={(event) => { event.preventDefault(); flush(); }} onBlur={flush}>
         <label>
           Title
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} required />
+          <WikiField as="input" value={title} onValue={setTitle} exceptId={node.id} maxLength={255} required />
         </label>
         <label>
           Notes
-          <textarea value={commentary} onChange={(e) => setCommentary(e.target.value)} rows={5} maxLength={20000} />
+          <WikiField value={commentary} onValue={setCommentary} exceptId={node.id} rows={5} maxLength={20000} />
+          <span className="muted small">
+            Link to another tile with [[Tile title | relationship | text to show]]. With a relationship, the arrow is made for you.
+          </span>
         </label>
         <h3>When and where</h3>
         <div className="place-grid">

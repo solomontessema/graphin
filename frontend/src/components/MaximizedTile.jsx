@@ -40,7 +40,7 @@ function placeBeside(rect, tall) {
  * linkHover, hovering a reference previews it (the maximized tile). Without it, references are plain links (the preview
  * of a related tile).
  */
-function TileBody({ node, tagColours, linkHover }) {
+export function TileBody({ node, tagColours, linkHover }) {
   const links = linksOf(node);
   const media = mediaOf(node);
   const place = placeOf(node);
@@ -239,6 +239,33 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The preview of a tile beside an item on the screen (rect is the item's place): used when a [[wiki link]] is hovered. The
+ * preview stays while the pointer is on it.
+ */
+export function TilePreviewWindow({ node, rect, tagColours, className, onEnter, onLeave, onClose }) {
+  return (
+    <div
+      className={`max-preview${className ? ` ${className}` : ''}`}
+      style={placeBeside(rect, false)}
+      role="dialog"
+      aria-label="Preview"
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
+      <div className="max-preview-bar">
+        <span className="focus-title">{node.title}</span>
+        <button type="button" className="ref-toggle" aria-label="Close preview" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <div className="max-preview-body">
+        <TileBody node={node} tagColours={tagColours} />
+      </div>
     </div>
   );
 }

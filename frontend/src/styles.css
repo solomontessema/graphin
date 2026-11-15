@@ -1917,3 +1917,16 @@ button.on {
 /* The left end of the maximized tile's bar: the way back to the graph, then the tile's name. */
 .max-back { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .max-back button { flex: 0 0 auto; white-space: nowrap; }
+
+/* [[Wiki links]] in titles and notes: a link to another tile. A link to a tile that does not exist is shown dashed and red. */
+.wikilink { color: #6d28d9; cursor: pointer; text-decoration: none; border-bottom: 1px dotted currentColor; }
+.wikilink:hover, .wikilink:focus { background: rgba(109, 40, 217, 0.12); outline: none; }
+.wikilink-missing { color: #b42318; border-bottom-style: dashed; cursor: not-allowed; }
+.wiki-preview { z-index: 1100; }
+
+/* The list of tiles offered while a [[wiki link]] is being typed, under the box that is being written in. */
+.wiki-field { position: relative; display: block; width: 100%; }
+.wiki-field > textarea, .wiki-field > input { width: 100%; box-sizing: border-box; }
+.wiki-menu { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; margin: 2px 0 0; padding: 4px 0; list-style: none; background: var(--surface, #fff); color: var(--text, #111827); border: 1px solid var(--border, #cbd5e1); border-radius: 8px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); max-height: 240px; overflow: auto; font-size: 14px; }
+.wiki-menu li { padding: 6px 12px; cursor: pointer; }
+.wiki-menu li.is-picked { background: #e0e7ff; color: #111827; }

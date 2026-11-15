@@ -11,7 +11,8 @@ import {
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
-import MaximizedTile from './MaximizedTile.jsx';
+import MaximizedTile, { TilePreviewWindow } from './MaximizedTile.jsx';
+import { WikiContext } from './wikilinks.jsx';
 import EdgeCard from './EdgeCard.jsx';
 import RightToolbar, { ITEMS } from './RightToolbar.jsx';
 import { convertShape } from '../shapes.js';
@@ -227,6 +228,50 @@ function Board({ networkId, user, onLogout }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [maximized]);
+
+  // Wiki links in titles and notes: hover one to preview the tile it names, click it to open that tile. The handlers read the
+  // current tiles from a ref, so the object handed to every tile stays the same between renders.
+  const [wikiPreview, setWikiPreview] = useState(null);
+  const wikiTimer = useRef(null);
+  const tilesRef = useRef([]);
+  const openMaximizedRef = useRef(() => {});
+  const wiki = useMemo(() => {
+    // A link names a tile by its title (capitals are ignored), or by its id.
+    const find = (target) => {
+      const wanted = String(target).trim().toLowerCase();
+      const tiles = tilesRef.current.filter((n) => n.type !== 'shape' && n.type !== 'text');
+      return tiles.find((n) => n.title.trim().toLowerCase() === wanted) || tiles.find((n) => n.id === String(target).trim()) || null;
+    };
+    return {
+      exists: (target) => find(target) !== null,
+      open: (target) => {
+        const tile = find(target);
+        if (!tile) return;
+        clearTimeout(wikiTimer.current);
+        setWikiPreview(null);
+        openMaximizedRef.current(tile.id);
+      },
+      preview: (target, element) => {
+        const tile = find(target);
+        if (!tile) return;
+        clearTimeout(wikiTimer.current);
+        setWikiPreview({ node: tile, rect: element.getBoundingClientRect() });
+      },
+      hide: () => {
+        clearTimeout(wikiTimer.current);
+        wikiTimer.current = setTimeout(() => setWikiPreview(null), 350);
+      },
+      // The titles of the tiles that begin with what has been typed after "[[", in alphabetical order, each title once.
+      suggest: (typed, exceptId) => {
+        const wanted = String(typed).trim().toLowerCase();
+        const titles = tilesRef.current
+          .filter((n) => n.id !== exceptId && n.type !== 'shape' && n.type !== 'text' && n.title.trim().toLowerCase().startsWith(wanted))
+          .map((n) => n.title);
+        return [...new Set(titles)].sort((a, b) => a.localeCompare(b)).slice(0, 8);
+      },
+    };
+  }, []);
+  useEffect(() => () => clearTimeout(wikiTimer.current), []);
   // The kind of item the right-hand toolbar is placing ("webpage", "pdf", "image" or "note"), or null.
   // While it is set, the next click on the canvas puts a new item there.
   const [addType, setAddType] = useState(null);
@@ -1305,6 +1350,8 @@ function Board({ networkId, user, onLogout }) {
     setEdgeCard(null);
     setMaximized({ id });
   }
+  tilesRef.current = rfNodes.map((n) => n.data.node);
+  openMaximizedRef.current = openMaximized;
 
   actionsRef.current = {
     edit: openEditCard,
@@ -1315,9 +1362,20 @@ function Board({ networkId, user, onLogout }) {
     },
   };
 
+  // Links the server made from the wiki links in a tile's text, so their arrows show at once.
+  function addEdges(list) {
+    if (!list?.length) return;
+    setEdges((es) => {
+      const known = new Set(es.map((e) => e.id));
+      return [...es, ...list.filter((e) => !known.has(e.id))];
+    });
+  }
+
   function replaceNode(updated) {
+    const { new_edges: newEdges, ...fields } = updated;
+    addEdges(newEdges);
     setRfNodes((ns) =>
-      ns.map((n) => (n.id === updated.id ? { ...n, data: { ...n.data, node: { ...n.data.node, ...updated } } } : n))
+      ns.map((n) => (n.id === fields.id ? { ...n, data: { ...n.data, node: { ...n.data.node, ...fields } } } : n))
     );
   }
 
@@ -1411,6 +1469,7 @@ function Board({ networkId, user, onLogout }) {
   }
 
   return (
+    <WikiContext.Provider value={wiki}>
     <div className={`board${addType || drawing ? ' placing' : ''}${connecting ? ' connecting' : ''}${painting ? ' painting' : ''}`}>
       <header className="toolbar">
         <a className="back" href="#/">
@@ -1725,6 +1784,19 @@ function Board({ networkId, user, onLogout }) {
       )}
 
       {showBookmarklet && <BookmarkletDialog onClose={() => setShowBookmarklet(false)} />}
+
+      {wikiPreview && (
+        <TilePreviewWindow
+          className="wiki-preview"
+          node={wikiPreview.node}
+          rect={wikiPreview.rect}
+          tagColours={tagColours}
+          onEnter={() => clearTimeout(wikiTimer.current)}
+          onLeave={wiki.hide}
+          onClose={() => setWikiPreview(null)}
+        />
+      )}
     </div>
+    </WikiContext.Provider>
   );
 }
