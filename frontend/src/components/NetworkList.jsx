@@ -143,6 +143,17 @@ export default function NetworkList({ user, onLogout }) {
           </a>{' '}
           for Chrome or Edge.
         </p>
+        <p className="muted small">
+          New here? Watch the{' '}
+          <a href="graphin-quick-start.mp4" target="_blank" rel="noreferrer">
+            3-minute video
+          </a>{' '}
+          or read the{' '}
+          <a href="graphin-quick-start.pdf" target="_blank" rel="noreferrer">
+            quick start slides (PDF)
+          </a>
+          .
+        </p>
       </header>
 
       {error && <p className="error">{error}</p>}

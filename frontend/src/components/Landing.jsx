@@ -334,6 +334,19 @@ export default function Landing({ onAuth, notice = '' }) {
         </ol>
       </section>
 
+      <section className="landing-section">
+        <h2>See it in action</h2>
+        <p className="learn-lead">A three-minute tour, from signing up to sharing your first graph.</p>
+        <video className="learn-video" controls preload="metadata" src="graphin-quick-start.mp4">
+          Your browser cannot play this video.
+        </video>
+        <p className="learn-links">
+          <a href="graphin-quick-start.pdf" target="_blank" rel="noreferrer">Quick start slides (PDF)</a>
+          <span aria-hidden="true"> · </span>
+          <a href="graphin-quick-start.mp4" target="_blank" rel="noreferrer">Open the video</a>
+        </p>
+      </section>
+
       <section className="landing-cta">
         <HeroGraphic />
         <h2>Start your first graph today. It is free.</h2>

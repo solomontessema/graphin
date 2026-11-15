@@ -1942,3 +1942,8 @@ button.on {
 
 /* The link in the share dialog. */
 .share-link { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border, #cbd5e1); border-radius: 6px; background: var(--surface, #fff); color: var(--text, #111827); }
+
+/* Landing: the tour video and the quick start slides */
+.learn-lead { text-align: center; color: var(--l-muted); margin: 0 0 20px; }
+.learn-video { display: block; width: 100%; max-width: 860px; margin: 0 auto; border-radius: 12px; border: 1px solid var(--l-line); background: #1e3a5f; }
+.learn-links { text-align: center; margin: 16px 0 0; }
