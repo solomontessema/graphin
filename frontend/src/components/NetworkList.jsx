@@ -135,24 +135,18 @@ export default function NetworkList({ user, onLogout }) {
       )}
       <header className="page-header">
         <h1>Graphin</h1>
-        <p className="tagline">A visual network for research, ideas, and knowledge.</p>
+        <p className="tagline">
+          A visual network for research, ideas, and knowledge.{' '}
+          <a href="graphin-quick-start.pdf" target="_blank" rel="noreferrer">
+            Quick start slides (PDF)
+          </a>
+        </p>
         <p className="muted small">
           Save pages from any website with the{' '}
           <a href="https://chromewebstore.google.com/detail/bfanogkkajkikeaanpifjcenhelggfml" target="_blank" rel="noreferrer">
             Graphin Save extension
           </a>{' '}
           for Chrome or Edge.
-        </p>
-        <p className="muted small">
-          New here? Watch the{' '}
-          <a href="graphin-quick-start.mp4" target="_blank" rel="noreferrer">
-            3-minute video
-          </a>{' '}
-          or read the{' '}
-          <a href="graphin-quick-start.pdf" target="_blank" rel="noreferrer">
-            quick start slides (PDF)
-          </a>
-          .
         </p>
       </header>
 
