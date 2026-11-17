@@ -1487,6 +1487,23 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
     }
   }
 
+  // A one-time note on phones (hidden by CSS on larger screens); once dismissed it stays away.
+  const [smallNoticeGone, setSmallNoticeGone] = useState(() => {
+    try {
+      return localStorage.getItem('graphin-small-note') === '1';
+    } catch {
+      return false;
+    }
+  });
+  function dismissSmallNotice() {
+    setSmallNoticeGone(true);
+    try {
+      localStorage.setItem('graphin-small-note', '1');
+    } catch {
+      /* private mode: the note simply shows again next time */
+    }
+  }
+
   function onSearchKey(event) {
     if (event.key === 'Enter' && matches && matches.size > 0) {
       fitView({ nodes: [{ id: [...matches][0] }], duration: 500, maxZoom: 1.2 });
@@ -1525,7 +1542,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
           <option value="2">Within 2 links of selected</option>
         </select>
         {visibleIds && (
-          <span className="muted small">
+          <span className="muted small hide-small">
             {visibleIds.size} of {rfNodes.length} nodes
           </span>
         )}
@@ -1540,7 +1557,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
         <button className="ghost" onClick={() => setTagPanelOpen((open) => !open)} aria-expanded={tagPanelOpen} title="Tags: code, filter and colour your material">
           Tags{tagFilter.size > 0 ? ` (${tagFilter.size} ticked)` : allTags.length > 0 ? ` (${allTags.length})` : ''}
         </button>
-        <button className="ghost" onClick={toggleGrid} aria-pressed={showGrid}>
+        <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
           Grid: {showGrid ? 'on' : 'off'}
         </button>
         <button
@@ -1613,7 +1630,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
             </ul>
           )}
         </div>
-        <button className="ghost" hidden={readOnly} onClick={() => setShowBookmarklet(true)}>
+        <button className="ghost hide-small" hidden={readOnly} onClick={() => setShowBookmarklet(true)}>
           Bookmarklet
         </button>
         {!readOnly && (
@@ -1623,7 +1640,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
         )}
         {readOnly ? (
           <div className="toolbar-account">
-            <span className="muted small">Shared read-only</span>
+            <span className="muted small hide-small">Shared read-only</span>
             <button onClick={onCopy} title="Make your own editable copy of this graph">
               Copy to my account
             </button>
@@ -1641,6 +1658,12 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
           )
         )}
       </header>
+
+      {!readOnly && !smallNoticeGone && (
+        <div className="banner small-screen-note" onClick={dismissSmallNotice}>
+          Graphin is easiest to edit on a larger screen. On a phone you can still browse, zoom and add notes. <span className="muted">(tap to dismiss)</span>
+        </div>
+      )}
 
       {scope !== 'all' && !selectedId && <div className="banner">Click a node to show the links around it.</div>}
 
@@ -1715,6 +1738,12 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
         </div>
 
         {!readOnly && <RightToolbar onAdd={chooseAdd} />}
+
+        {readOnly && (
+          <a className="made-with" href="https://graphin.org/" target="_blank" rel="noreferrer">
+            Created with <strong>Graphin</strong> <span>Make your own, free</span>
+          </a>
+        )}
 
         {tagPanelOpen && (
           <TagPanel
