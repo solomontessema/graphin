@@ -1993,11 +1993,15 @@ button.on {
   .landing .cta-button { width: 100%; }
 }
 
-/* "Created with Graphin": a small link on shared read-only graphs */
-.made-with { position: absolute; left: 56px; bottom: 14px; z-index: 6; display: inline-flex; gap: 6px; align-items: baseline; padding: 5px 12px; font-size: 12px; text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); opacity: 0.85; }
-.made-with:hover { opacity: 1; }
-.made-with span { color: var(--muted); }
+/* "Created with Graphin": a clear link on shared read-only graphs */
+.made-with { position: absolute; left: 56px; bottom: 14px; z-index: 6; display: flex; flex-direction: column; gap: 2px; padding: 10px 18px; text-decoration: none; background: #1e3a5f; color: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+.made-with:hover { background: #16304f; }
+.made-with-top { font-size: 17px; line-height: 1.2; }
+.made-with-top strong { font-size: 19px; }
+.made-with-cta { font-size: 14px; color: #f2c9a0; font-weight: 600; }
 @media (max-width: 640px) {
-  .made-with { left: 8px; bottom: 56px; }
-  .made-with span { display: none; }
+  .made-with { left: 8px; bottom: 56px; padding: 8px 14px; }
+  .made-with-top { font-size: 15px; }
+  .made-with-top strong { font-size: 16px; }
+  .made-with-cta { font-size: 13px; }
 }

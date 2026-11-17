@@ -808,10 +808,10 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   const edgeHandlers = useRef({});
   edgeHandlers.current = {
     // Moves a point of the link's line while it is dragged. It is saved when the drag ends.
-    // On a shared network the lines cannot be bent.
-    move: (id, pts) => !readOnly && setEdges((es) => es.map((e) => (e.id === id ? { ...e, style: withPts(e.style, pts) } : e))),
-    commit: (id, pts) => !readOnly && updateEdgeStyle(id, withPts(edges.find((e) => e.id === id)?.style, pts)),
-    reset: (id) => !readOnly && updateEdgeStyle(id, withoutBend(edges.find((e) => e.id === id)?.style)),
+    // On a shared network the lines can be bent too, but only on this screen (see updateEdgeStyle).
+    move: (id, pts) => setEdges((es) => es.map((e) => (e.id === id ? { ...e, style: withPts(e.style, pts) } : e))),
+    commit: (id, pts) => updateEdgeStyle(id, withPts(edges.find((e) => e.id === id)?.style, pts)),
+    reset: (id) => updateEdgeStyle(id, withoutBend(edges.find((e) => e.id === id)?.style)),
     click: (event, id) => onEdgeClick(event, { id }),
   };
   const edgeActions = useMemo(
@@ -1043,6 +1043,11 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   }
 
   async function updateEdgeStyle(id, style) {
+    // A reader of a shared link can reshape lines for the session; nothing is sent to the server.
+    if (readOnly) {
+      setEdges((es) => es.map((e) => (e.id === id ? { ...e, style } : e)));
+      return;
+    }
     try {
       const updated = await api.updateEdge(id, { style });
       setEdges((es) => es.map((e) => (e.id === id ? { ...e, style: updated.style } : e)));
@@ -1213,6 +1218,8 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   }
 
   function savePositions(items) {
+    // Readers of a shared link can move things around, but only on their own screen.
+    if (readOnly) return;
     api.savePositions(networkId, items).catch((e) => setError(e.message));
   }
 
@@ -1640,7 +1647,9 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
         )}
         {readOnly ? (
           <div className="toolbar-account">
-            <span className="muted small hide-small">Shared read-only</span>
+            <span className="muted small hide-small" title="Drag tiles, arrows, labels and text around freely. Nothing is saved.">
+              Shared read-only: move things freely, nothing is saved
+            </span>
             <button onClick={onCopy} title="Make your own editable copy of this graph">
               Copy to my account
             </button>
@@ -1687,7 +1696,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
-          nodesDraggable={!readOnly}
+          nodesDraggable
           nodesConnectable={!readOnly}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
@@ -1741,7 +1750,8 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
 
         {readOnly && (
           <a className="made-with" href="https://graphin.org/" target="_blank" rel="noreferrer">
-            Created with <strong>Graphin</strong> <span>Make your own, free</span>
+            <span className="made-with-top">Created with <strong>Graphin</strong></span>
+            <span className="made-with-cta">Make your own, free →</span>
           </a>
         )}
 
