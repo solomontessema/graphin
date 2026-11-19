@@ -19,8 +19,9 @@ export default function ShareDialog({ networkId, onClose }) {
       .catch((e) => setError(e.message));
   }, [networkId]);
 
-  // The address of the app's own page, with the secret after it.
-  const link = state?.token ? `${new URL('./', window.location.href).href}#/shared/${state.token}` : '';
+  // The address of the app with /s/ and the secret. That address answers with the graph's name and picture, so a link preview
+  // shows them; opening it goes on to the graph.
+  const link = state?.token ? `${new URL('./', window.location.href).href}s/${state.token}` : '';
 
   async function change(work) {
     setError('');

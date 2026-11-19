@@ -218,6 +218,54 @@ $spa = function (Request $request, Response $response): Response {
     $response->getBody()->write((string) file_get_contents($index));
     return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
 };
+// The address to hand out for a shared graph: /s/{token}. The part of an address after "#" never reaches a server, so a link
+// like /#/shared/{token} cannot have its own preview picture. This address can: it answers with a small page whose
+// Open Graph tags carry the graph's name and its cover picture (the one on its tile on the home page), which link previews
+// in LinkedIn, Slack, WhatsApp and the like show. A person opening it is sent straight on to the graph in the app.
+$app->get('/s/{token}', function (Request $request, Response $response, array $args) use ($db, $siteUrl): Response {
+    $token = (string) $args['token'];
+    $network = preg_match('/^[a-f0-9]{48}$/', $token)
+        ? $db->fetchOne('SELECT id, name, cover_url FROM networks WHERE share_token = ?', [$token])
+        : null;
+    $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    if ($network === null) {
+        $response->getBody()->write('<!doctype html><meta charset="utf-8"><title>Graphin</title><meta name="robots" content="noindex">'
+            . '<p>This link is not shared, or sharing has been stopped. <a href="' . $esc($siteUrl . '/') . '">Go to Graphin</a></p>');
+        return $response->withStatus(404)->withHeader('Content-Type', 'text/html; charset=utf-8');
+    }
+    $count = (int) ($db->fetchOne('SELECT COUNT(*) AS c FROM nodes WHERE network_id = ?', [$network['id']])['c'] ?? 0);
+    $cover = trim((string) ($network['cover_url'] ?? ''));
+    if ($cover === '') {
+        $image = $siteUrl . '/share-image.png';
+    } elseif (preg_match('#^https?://#i', $cover)) {
+        $image = $cover;
+    } else {
+        $image = $siteUrl . '/' . ltrim($cover, '/');
+    }
+    $title = (string) $network['name'];
+    $description = 'A graph on Graphin' . ($count > 0 ? ' with ' . $count . ' ' . ($count === 1 ? 'item' : 'items') : '')
+        . '. Open it to explore the connections. Free to make your own.';
+    $page = $siteUrl . '/s/' . $token;
+    $target = $siteUrl . '/#/shared/' . $token;
+    $html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>' . $esc($title) . ' - Graphin</title>'
+        . '<meta name="description" content="' . $esc($description) . '">'
+        . '<meta property="og:type" content="website"><meta property="og:site_name" content="Graphin">'
+        . '<meta property="og:title" content="' . $esc($title) . '">'
+        . '<meta property="og:description" content="' . $esc($description) . '">'
+        . '<meta property="og:url" content="' . $esc($page) . '">'
+        . '<meta property="og:image" content="' . $esc($image) . '">'
+        . '<meta property="og:image:alt" content="' . $esc($title) . '">'
+        . '<meta name="twitter:card" content="summary_large_image">'
+        . '<meta name="twitter:title" content="' . $esc($title) . '">'
+        . '<meta name="twitter:image" content="' . $esc($image) . '">'
+        . '<link rel="canonical" href="' . $esc($page) . '">'
+        . '<script>location.replace(' . json_encode($target, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ');</script>'
+        . '</head><body><p>Opening <a href="' . $esc($target) . '">' . $esc($title) . '</a> in Graphin.</p></body></html>';
+    $response->getBody()->write($html);
+    return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
+});
+
 $app->get('/{path:.*}', $spa);
 $app->get('', $spa); // the folder's own address, such as /graphin/index.php
 

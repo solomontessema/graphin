@@ -12,3 +12,9 @@ Options -Indexes
     Deny from all
   </IfModule>
 </FilesMatch>
+
+# A shared graph's address, /s/<secret>, is answered by index.php, which adds the graph's name and picture for link previews.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^s/[a-f0-9]{48}/?$ index.php [L]
+</IfModule>
