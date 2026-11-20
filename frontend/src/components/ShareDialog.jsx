@@ -11,6 +11,7 @@ export default function ShareDialog({ networkId, onClose }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
 
   useEffect(() => {
     api
@@ -42,10 +43,26 @@ export default function ShareDialog({ networkId, onClose }) {
       setState({ shared: false, token: null });
     });
 
+  // The same graph inside another web page: an iframe that shows the read-only view without the app's own navigation.
+  const embedCode = state?.token
+    ? `<iframe src="${new URL('./', window.location.href).href}#/shared/${state.token}?embed=1" width="100%" height="600" style="border:1px solid #d0d7e2;border-radius:8px" loading="lazy" allowfullscreen title="Graph made with Graphin"></iframe>`
+    : '';
+
+  async function copyEmbed() {
+    try {
+      await navigator.clipboard.writeText(embedCode);
+      setCopiedEmbed(true);
+      setCopied(false);
+    } catch {
+      setCopiedEmbed(false);
+    }
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
+      setCopiedEmbed(false);
     } catch {
       setCopied(false);
     }
@@ -82,6 +99,13 @@ export default function ShareDialog({ networkId, onClose }) {
             <div className="form-row end">
               <button type="button" onClick={copy}>
                 {copied ? 'Copied' : 'Copy link'}
+              </button>
+            </div>
+            <p className="embed-heading">Or put it on a web page</p>
+            <textarea className="share-link embed-code" readOnly rows={4} value={embedCode} onFocus={(e) => e.target.select()} aria-label="Embed code" />
+            <div className="form-row end">
+              <button type="button" className="ghost" onClick={copyEmbed}>
+                {copiedEmbed ? 'Copied' : 'Copy embed code'}
               </button>
             </div>
             <p className="muted small">

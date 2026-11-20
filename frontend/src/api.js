@@ -42,6 +42,7 @@ export const api = {
   editNetwork: (id, fields) => request('PUT', `/networks/${id}`, fields),
   renameNetwork: (id, name) => request('PUT', `/networks/${id}`, { name }),
   setTagColours: (id, tagColors) => request('PUT', `/networks/${id}`, { tag_colors: tagColors }),
+  setLayers: (id, layers) => request('PUT', `/networks/${id}`, { layers }),
   deleteNetwork: (id) => request('DELETE', `/networks/${id}`),
   graph: (id) => request('GET', `/networks/${id}/graph`),
   savePositions: (id, items) => request('PUT', `/networks/${id}/positions`, items),

@@ -30,6 +30,8 @@ import { LAYOUTS, computeLayout } from '../layouts.js';
 
 import BendEdge from './BendEdge.jsx';
 import TagPanel from './TagPanel.jsx';
+import LayerPanel from './LayerPanel.jsx';
+import { layerHidden } from '../layers.js';
 import { collectTags, matchesTags, tagColour } from '../tags.js';
 import { presetFor } from '../relationships.js';
 import NameEditor from './NameEditor.jsx';
@@ -176,15 +178,15 @@ function firstLine(text, max) {
  * A network on a canvas. With readOnly it is the page of a share link: networkId is the link's secret, the graph is read from the
  * share endpoint, and nothing can be changed. onCopy copies the shared graph into the account of whoever is looking at it.
  */
-export default function NetworkView({ networkId, user, onLogout, readOnly = false, onCopy }) {
+export default function NetworkView({ networkId, user, onLogout, readOnly = false, onCopy, embed = false }) {
   return (
     <ReactFlowProvider>
-      <Board networkId={networkId} user={user} onLogout={onLogout} readOnly={readOnly} onCopy={onCopy} />
+      <Board networkId={networkId} user={user} onLogout={onLogout} readOnly={readOnly} onCopy={onCopy} embed={embed} />
     </ReactFlowProvider>
   );
 }
 
-function Board({ networkId, user, onLogout, readOnly, onCopy }) {
+function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
   const { screenToFlowPosition, flowToScreenPosition, fitView, getNode, getViewport } = useReactFlow();
   const [networkName, setNetworkName] = useState('');
   const [renamingNetwork, setRenamingNetwork] = useState(false);
@@ -194,6 +196,12 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   const [tagFilter, setTagFilter] = useState(() => new Set());
   const [tagMatch, setTagMatch] = useState('any');
   const [tagPanelOpen, setTagPanelOpen] = useState(false);
+  // Layers: named groups of tags (saved with the network), which layers are switched off, and whether the tiles in no layer
+  // are. What is switched off is for this screen only and starts again as all on.
+  const [layers, setLayers] = useState([]);
+  const [layersOff, setLayersOff] = useState(() => new Set());
+  const [otherOff, setOtherOff] = useState(false);
+  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const tagModeKey = `graphin:tag-mode:${networkId}`;
   const [tagMode, setTagModeState] = useState(() => {
     try {
@@ -525,6 +533,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
       .then((graph) => {
         setNetworkName(graph.network.name);
         setTagColours(graph.network.tag_colors || {});
+        setLayers(graph.network.layers || []);
         setRfNodes(graph.nodes.map(toFlowNode));
         setEdges(graph.edges);
         setLoaded(true);
@@ -689,10 +698,11 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
   }
 
   // The items on show: those the focus view includes, and those dated inside the time range.
+  const layerHide = useMemo(() => layerHidden(rfNodes, layers, layersOff, otherOff), [rfNodes, layers, layersOff, otherOff]);
   const shownIds = useMemo(() => {
     const timed = hasTime && (timeRange[0] > 0 || timeRange[1] < 1);
     const tagged = tagFilter.size > 0;
-    if (!visibleIds && !timed && !tagged) return null;
+    if (!visibleIds && !timed && !tagged && !layerHide) return null;
     // With tags ticked, the tiles that carry one stay, and so do both ends of every link that carries one.
     let byTag = null;
     if (tagged) {
@@ -707,6 +717,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
     const shown = new Set();
     for (const n of rfNodes) {
       if (visibleIds && !visibleIds.has(n.id)) continue;
+      if (layerHide && layerHide.has(n.id)) continue;
       if (byTag && n.type === 'link' && !byTag.has(n.id)) continue;
       const year = years.get(n.id);
       if (timed && year != null) {
@@ -716,7 +727,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
       shown.add(n.id);
     }
     return shown;
-  }, [rfNodes, edges, visibleIds, years, hasTime, timeRange, timeScale, yearMin, yearMax, tagFilter, tagMatch]);
+  }, [rfNodes, edges, visibleIds, years, hasTime, timeRange, timeScale, yearMin, yearMax, tagFilter, tagMatch, layerHide]);
 
   // Fit shows every tile on show. Shapes are frames around tiles, so they do not decide the view, and a time range
   // that hides most tiles brings the view in on the rest.
@@ -890,6 +901,29 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
       return next;
     });
   }
+
+  // Layers are saved with the network. Switching them on and off is only for this screen.
+  function saveLayers(next) {
+    setLayers(next);
+    const ids = new Set(next.map((l) => l.id));
+    setLayersOff((off) => new Set([...off].filter((id) => ids.has(id))));
+    if (readOnly) return;
+    api.setLayers(networkId, next).catch((e) => setError(e.message));
+  }
+  const toggleLayer = (id) =>
+    setLayersOff((off) => {
+      const next = new Set(off);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const soloLayer = (id) => {
+    setLayersOff(new Set(layers.filter((l) => l.id !== id).map((l) => l.id)));
+    setOtherOff(true);
+  };
+  const showAllLayers = () => {
+    setLayersOff(new Set());
+    setOtherOff(false);
+  };
 
   async function chooseTagColour(tag, colour) {
     const next = { ...tagColours, [tag]: colour };
@@ -1519,7 +1553,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
 
   return (
     <WikiContext.Provider value={wiki}>
-    <div className={`board${addType || drawing ? ' placing' : ''}${connecting ? ' connecting' : ''}${painting ? ' painting' : ''}`}>
+    <div className={`board${embed ? ' embed' : ''}${addType || drawing ? ' placing' : ''}${connecting ? ' connecting' : ''}${painting ? ' painting' : ''}`}>
       <header className="toolbar">
         <a className="back" href="#/">
           {readOnly ? (user ? '← My graphs' : 'Graphin') : '← Networks'}
@@ -1561,8 +1595,11 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
             </option>
           ))}
         </select>
-        <button className="ghost" onClick={() => setTagPanelOpen((open) => !open)} aria-expanded={tagPanelOpen} title="Tags: code, filter and colour your material">
+        <button className="ghost" onClick={() => { setTagPanelOpen((open) => !open); setLayerPanelOpen(false); }} aria-expanded={tagPanelOpen} title="Tags: code, filter and colour your material">
           Tags{tagFilter.size > 0 ? ` (${tagFilter.size} ticked)` : allTags.length > 0 ? ` (${allTags.length})` : ''}
+        </button>
+        <button className="ghost" onClick={() => { setLayerPanelOpen((open) => !open); setTagPanelOpen(false); }} aria-expanded={layerPanelOpen} title="Layers: group tags and switch groups on and off">
+          Layers{layersOff.size > 0 || otherOff ? ' (some off)' : layers.length > 0 ? ` (${layers.length})` : ''}
         </button>
         <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
           Grid: {showGrid ? 'on' : 'off'}
@@ -1770,6 +1807,24 @@ function Board({ networkId, user, onLogout, readOnly, onCopy }) {
             onRename={(from, to) => retag(from, to)}
             onRemove={(tag) => retag(tag, null)}
             onClose={() => setTagPanelOpen(false)}
+          />
+        )}
+
+        {layerPanelOpen && (
+          <LayerPanel
+            layers={layers}
+            off={layersOff}
+            otherOff={otherOff}
+            tags={allTags}
+            items={rfNodes.filter((n) => n.type !== 'shape').map((n) => n.data.node)}
+            colours={tagColours}
+            readOnly={readOnly}
+            onToggle={toggleLayer}
+            onToggleOther={() => setOtherOff((v) => !v)}
+            onSolo={soloLayer}
+            onShowAll={showAllLayers}
+            onSave={saveLayers}
+            onClose={() => setLayerPanelOpen(false)}
           />
         )}
 

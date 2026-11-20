@@ -2005,3 +2005,28 @@ button.on {
   .made-with-top strong { font-size: 16px; }
   .made-with-cta { font-size: 13px; }
 }
+
+/* ---------- Layers panel, embed code, and the embedded (iframe) view ---------- */
+.layer-panel { width: 320px; }
+.layer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.layer-list li { display: flex; align-items: center; gap: 8px; padding: 4px 2px; }
+.layer-list li.off .layer-name { opacity: 0.5; text-decoration: line-through; }
+.layer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.layer-other .layer-name { font-weight: 400; }
+.layer-edit { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.layer-edit label { display: flex; flex-direction: column; gap: 4px; }
+.layer-tags { list-style: none; margin: 0; padding: 0; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border); border-radius: 8px; padding: 6px; }
+.layer-tags label { flex-direction: row; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; }
+.layer-tags .tag-name { flex: 1; }
+.tag-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.embed-heading { margin: 4px 0 0; font-weight: 600; }
+textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
+/* Inside an iframe on someone else's page: no way back to the app, and no sign-in prompts. */
+.board.embed .back, .board.embed .toolbar-account { display: none; }
+@media (max-width: 640px) { .layer-panel { left: 8px; right: 8px; width: auto; } }
+/* The embedded view keeps only what a reader needs: title, search, tags, layers and fit. */
+.board.embed .toolbar > select, .board.embed .size-bar, .board.embed .hide-small { display: none !important; }
+.board.embed .made-with { padding: 6px 12px; }
+.board.embed .made-with-top { font-size: 14px; }
+.board.embed .made-with-top strong { font-size: 15px; }
+.board.embed .made-with-cta { font-size: 12px; }

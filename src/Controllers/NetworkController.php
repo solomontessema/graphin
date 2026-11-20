@@ -46,7 +46,14 @@ final class NetworkController extends BaseController
         $this->findNetwork($args['id']);
         $data = $this->body($request);
         $name = array_key_exists('name', $data) ? $this->requiredString($data, 'name', self::TITLE_MAX) : null;
-        $colours = array_key_exists('tag_colors', $data) ? $this->cleanTagColors($data['tag_colors']) : false;
+        // Tag colours and layers share one column. A call that sends only one of them leaves the other as it is.
+        $colours = false;
+        if (array_key_exists('tag_colors', $data) || array_key_exists('layers', $data)) {
+            $stored = $this->storedParts($this->findNetwork($args['id'])['tag_colors'] ?? null);
+            $newColours = array_key_exists('tag_colors', $data) ? $this->cleanTagColors($data['tag_colors']) : $stored['colours'];
+            $newLayers = array_key_exists('layers', $data) ? $this->cleanLayers($data['layers']) : $stored['layers'];
+            $colours = $this->encodeStored($newColours, $newLayers);
+        }
         // The cover picture of the home page tile: a link to an image, or null for the default picture.
         $hasCover = array_key_exists('cover_url', $data);
         $cover = $hasCover ? $this->optionalUrl($data, 'cover_url') : null;
@@ -71,7 +78,7 @@ final class NetworkController extends BaseController
             }
         });
         $network = $this->findNetwork($args['id']);
-        return $this->json($response, $this->summary($network + ['node_count' => 0]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null)]);
+        return $this->json($response, $this->summary($network + ['node_count' => 0]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null)]);
     }
 
     /** DELETE /api/networks/{id} : removes its nodes and edges too. */
@@ -108,7 +115,7 @@ final class NetworkController extends BaseController
             [$network['id']]
         );
         return [
-            'network' => $this->summary($network + ['node_count' => count($nodes)]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null)],
+            'network' => $this->summary($network + ['node_count' => count($nodes)]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null)],
             'nodes' => array_map([$this, 'nodeOut'], $nodes),
             'edges' => array_map([$this, 'edgeOut'], $edges),
         ];
@@ -379,12 +386,14 @@ final class NetworkController extends BaseController
     }
 
     /**
-     * The colours a user chose for tags, as JSON for storage: {tag: "#rrggbb"}. Null clears them.
+     * The colours a user chose for tags, as {tag: "#rrggbb"}.
+     *
+     * @return array<string, string>
      */
-    private function cleanTagColors(mixed $input): ?string
+    private function cleanTagColors(mixed $input): array
     {
         if ($input === null || $input === []) {
-            return null;
+            return [];
         }
         if (!is_array($input) || array_is_list($input) || count($input) > 500) {
             throw new ApiException(422, '"tag_colors" must be an object of tag and colour.');
@@ -400,13 +409,88 @@ final class NetworkController extends BaseController
             }
             $clean[$tag] = strtolower($colour);
         }
-        return $clean === [] ? null : json_encode($clean, JSON_UNESCAPED_UNICODE);
+        return $clean;
+    }
+
+    /**
+     * The layers of a network: named groups of tags that can be shown or hidden together, [{id, name, tags}].
+     *
+     * @return list<array{id: string, name: string, tags: list<string>}>
+     */
+    private function cleanLayers(mixed $input): array
+    {
+        if ($input === null || $input === []) {
+            return [];
+        }
+        if (!is_array($input) || !array_is_list($input) || count($input) > 30) {
+            throw new ApiException(422, '"layers" must be a list of at most 30 layers.');
+        }
+        $clean = [];
+        $seen = [];
+        foreach ($input as $layer) {
+            if (!is_array($layer)) {
+                throw new ApiException(422, 'Each layer must have an id, a name and tags.');
+            }
+            $id = substr((string) preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($layer['id'] ?? ''))), 0, 40);
+            $name = trim((string) ($layer['name'] ?? ''));
+            if ($id === '' || isset($seen[$id])) {
+                throw new ApiException(422, 'Each layer needs its own id.');
+            }
+            if ($name === '') {
+                throw new ApiException(422, 'A layer needs a name.');
+            }
+            $seen[$id] = true;
+            $tags = [];
+            foreach (is_array($layer['tags'] ?? null) ? $layer['tags'] : [] as $tag) {
+                $tag = self::cleanTag((string) $tag);
+                if ($tag !== null && !in_array($tag, $tags, true)) {
+                    $tags[] = $tag;
+                }
+            }
+            $clean[] = ['id' => $id, 'name' => mb_substr($name, 0, 60), 'tags' => array_slice($tags, 0, 200)];
+        }
+        return $clean;
+    }
+
+    /**
+     * The column holds the tag colours and, under the key __layers, the layers. (One column, so the server needs no new one.)
+     *
+     * @return array{colours: array<string, string>, layers: array<int, mixed>}
+     */
+    private function storedParts(?string $json): array
+    {
+        $all = $json === null || $json === '' ? [] : json_decode($json, true);
+        $all = is_array($all) ? $all : [];
+        $layers = is_array($all['__layers'] ?? null) ? $all['__layers'] : [];
+        unset($all['__layers']);
+        return ['colours' => $all, 'layers' => $layers];
+    }
+
+    /**
+     * @param array<string, string> $colours
+     * @param array<int, mixed> $layers
+     */
+    private function encodeStored(array $colours, array $layers): ?string
+    {
+        if ($layers !== []) {
+            $colours['__layers'] = $layers;
+        }
+        return $colours === [] ? null : json_encode($colours, JSON_UNESCAPED_UNICODE);
     }
 
     /** The colour chosen for each tag of a network, as {tag: "#rrggbb"}. */
     private function tagColors(?string $json): object
     {
-        $colours = $json === null || $json === '' ? [] : json_decode($json, true);
-        return (object) (is_array($colours) ? $colours : []);
+        return (object) $this->storedParts($json)['colours'];
+    }
+
+    /**
+     * The layers of a network.
+     *
+     * @return array<int, mixed>
+     */
+    private function layers(?string $json): array
+    {
+        return $this->storedParts($json)['layers'];
     }
 }

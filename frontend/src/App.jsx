@@ -14,8 +14,13 @@ function readNetworkId() {
 
 /** The secret of a share link, as in #/shared/{token}, or null. */
 function readSharedToken() {
-  const match = window.location.hash.match(/^#\/shared\/([a-f0-9]{48})$/);
+  const match = window.location.hash.match(/^#\/shared\/([a-f0-9]{48})(\?.*)?$/);
   return match ? match[1] : null;
+}
+
+/** True when a shared graph is shown inside another page (an iframe): #/shared/{token}?embed=1. */
+function readEmbed() {
+  return /^#\/shared\/[a-f0-9]{48}\?(.*&)?embed=1(&|$)/.test(window.location.hash);
 }
 
 // A shared graph that someone chose to copy before they were signed in: the copy is made as soon as they are.
@@ -127,7 +132,7 @@ export default function App() {
   }
   // A share link opens the graph to read, whether or not anyone is signed in.
   if (sharedToken) {
-    return <NetworkView key={sharedToken} networkId={sharedToken} user={auth.user} readOnly onCopy={() => copyShared(sharedToken)} />;
+    return <NetworkView key={sharedToken} networkId={sharedToken} user={auth.user} readOnly embed={readEmbed()} onCopy={() => copyShared(sharedToken)} />;
   }
   if (auth.mode === 'accounts' && !auth.user) {
     // The bookmarklet window has no room for a landing page: it asks to sign in first.
