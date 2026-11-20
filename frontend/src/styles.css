@@ -2007,12 +2007,12 @@ button.on {
 }
 
 /* ---------- Layers panel, embed code, and the embedded (iframe) view ---------- */
-.layer-panel { width: 320px; }
 .layer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .layer-list li { display: flex; align-items: center; gap: 8px; padding: 4px 2px; }
 .layer-list li.off .layer-name { opacity: 0.5; text-decoration: line-through; }
 .layer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .layer-other .layer-name { font-weight: 400; }
+.layer-all { border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 2px; }
 .layer-edit { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
 .layer-edit label { display: flex; flex-direction: column; gap: 4px; }
 .layer-tags { list-style: none; margin: 0; padding: 0; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border); border-radius: 8px; padding: 6px; }
@@ -2023,10 +2023,27 @@ button.on {
 textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
 /* Inside an iframe on someone else's page: no way back to the app, and no sign-in prompts. */
 .board.embed .back, .board.embed .toolbar-account { display: none; }
-@media (max-width: 640px) { .layer-panel { left: 8px; right: 8px; width: auto; } }
 /* The embedded view keeps only what a reader needs: title, search, tags, layers and fit. */
 .board.embed .toolbar > select, .board.embed .size-bar, .board.embed .hide-small { display: none !important; }
 .board.embed .made-with { padding: 6px 12px; }
 .board.embed .made-with-top { font-size: 14px; }
 .board.embed .made-with-top strong { font-size: 15px; }
 .board.embed .made-with-cta { font-size: 12px; }
+
+/* ---------- The layers sidebar: pinned beside the canvas, or a tab that opens over it ---------- */
+.board-body { flex: 1; min-height: 0; display: flex; }
+.board-body > .canvas-wrap { min-width: 0; }
+.layer-sidebar { position: relative; flex: none; z-index: 9; background: var(--surface); border-right: 1px solid var(--border); font-size: 0.85rem; }
+.layer-sidebar.pinned { width: 290px; }
+.layer-sidebar.auto { width: 30px; }
+.layer-rail { width: 30px; height: 100%; padding: 12px 0; border: none; border-radius: 0; background: var(--surface); color: var(--text); cursor: pointer; display: flex; justify-content: center; align-items: flex-start; }
+.layer-rail:hover { background: var(--surface-2); }
+.layer-rail span { writing-mode: vertical-rl; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap; }
+.layer-body { height: 100%; width: 290px; box-sizing: border-box; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--surface); }
+.layer-sidebar.auto .layer-body { position: absolute; top: 0; left: 0; bottom: 0; box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2); border-right: 1px solid var(--border); }
+.layer-body header { display: flex; justify-content: space-between; align-items: center; }
+.layer-bar-buttons { display: flex; gap: 4px; }
+@media (max-width: 640px) {
+  .layer-body { width: min(290px, 86vw); }
+  .layer-pin { display: none; }
+}

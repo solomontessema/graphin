@@ -201,7 +201,28 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
   const [layers, setLayers] = useState([]);
   const [layersOff, setLayersOff] = useState(() => new Set());
   const [otherOff, setOtherOff] = useState(false);
-  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
+  // Where the layers sidebar is: 'pinned' (docked open), 'auto' (a slim tab that opens when the pointer is on it) or 'hidden'.
+  // The choice is remembered in this browser. Until one is made, a graph with layers shows it pinned (on a phone, as a tab).
+  const [layerChoice, setLayerChoice] = useState(() => {
+    try {
+      return window.localStorage.getItem('graphin:layer-mode');
+    } catch {
+      return null;
+    }
+  });
+  const smallScreen = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+  const layerMode = (() => {
+    const mode = layerChoice || (layers.length > 0 ? (embed || smallScreen ? 'auto' : 'pinned') : 'hidden');
+    return mode === 'pinned' && smallScreen ? 'auto' : mode;
+  })();
+  function chooseLayerMode(mode) {
+    setLayerChoice(mode);
+    try {
+      window.localStorage.setItem('graphin:layer-mode', mode);
+    } catch {
+      /* the choice then lasts only for this visit */
+    }
+  }
   const tagModeKey = `graphin:tag-mode:${networkId}`;
   const [tagMode, setTagModeState] = useState(() => {
     try {
@@ -916,13 +937,10 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  const soloLayer = (id) => {
-    setLayersOff(new Set(layers.filter((l) => l.id !== id).map((l) => l.id)));
-    setOtherOff(true);
-  };
-  const showAllLayers = () => {
-    setLayersOff(new Set());
-    setOtherOff(false);
+  // Select all shows every layer; clearing it hides them all, and then the reader ticks the ones to see.
+  const setAllLayers = (on) => {
+    setLayersOff(on ? new Set() : new Set(layers.map((l) => l.id)));
+    setOtherOff(!on);
   };
 
   async function chooseTagColour(tag, colour) {
@@ -1595,10 +1613,10 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             </option>
           ))}
         </select>
-        <button className="ghost" onClick={() => { setTagPanelOpen((open) => !open); setLayerPanelOpen(false); }} aria-expanded={tagPanelOpen} title="Tags: code, filter and colour your material">
+        <button className="ghost" onClick={() => setTagPanelOpen((open) => !open)} aria-expanded={tagPanelOpen} title="Tags: code, filter and colour your material">
           Tags{tagFilter.size > 0 ? ` (${tagFilter.size} ticked)` : allTags.length > 0 ? ` (${allTags.length})` : ''}
         </button>
-        <button className="ghost" onClick={() => { setLayerPanelOpen((open) => !open); setTagPanelOpen(false); }} aria-expanded={layerPanelOpen} title="Layers: group tags and switch groups on and off">
+        <button className="ghost" onClick={() => chooseLayerMode(layerMode === 'hidden' ? (smallScreen ? 'auto' : 'pinned') : 'hidden')} aria-pressed={layerMode !== 'hidden'} title="Layers: group tags and switch groups on and off">
           Layers{layersOff.size > 0 || otherOff ? ' (some off)' : layers.length > 0 ? ` (${layers.length})` : ''}
         </button>
         <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
@@ -1719,6 +1737,24 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         </div>
       )}
 
+      <div className="board-body">
+      {layerMode !== 'hidden' && (
+        <LayerPanel
+          mode={layerMode}
+          onMode={chooseLayerMode}
+          layers={layers}
+          off={layersOff}
+          otherOff={otherOff}
+          tags={allTags}
+          items={rfNodes.filter((n) => n.type !== 'shape').map((n) => n.data.node)}
+          colours={tagColours}
+          readOnly={readOnly}
+          onToggle={toggleLayer}
+          onToggleOther={() => setOtherOff((v) => !v)}
+          onSetAll={setAllLayers}
+          onSave={saveLayers}
+        />
+      )}
       <div className="canvas-wrap" ref={wrapRef} onDragOver={onDragOver} onDrop={onDrop} style={{ '--tile-scale': tileScale }}>
         {!loaded && <p className="muted canvas-msg">Loading…</p>}
         {loaded && rfNodes.length === 0 && (
@@ -1810,24 +1846,6 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
           />
         )}
 
-        {layerPanelOpen && (
-          <LayerPanel
-            layers={layers}
-            off={layersOff}
-            otherOff={otherOff}
-            tags={allTags}
-            items={rfNodes.filter((n) => n.type !== 'shape').map((n) => n.data.node)}
-            colours={tagColours}
-            readOnly={readOnly}
-            onToggle={toggleLayer}
-            onToggleOther={() => setOtherOff((v) => !v)}
-            onSolo={soloLayer}
-            onShowAll={showAllLayers}
-            onSave={saveLayers}
-            onClose={() => setLayerPanelOpen(false)}
-          />
-        )}
-
         {shapeMenu && (
           <div className="shape-menu" role="menu" aria-label="Shape to draw">
             <span className="rt-title">Draw a</span>
@@ -1877,6 +1895,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             readOnly={readOnly}
           />
         )}
+      </div>
       </div>
 
       {maximized && rfNodes.find((n) => n.id === maximized.id) && (
