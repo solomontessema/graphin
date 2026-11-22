@@ -31,7 +31,7 @@ import { LAYOUTS, computeLayout } from '../layouts.js';
 import BendEdge from './BendEdge.jsx';
 import TagPanel from './TagPanel.jsx';
 import LayerPanel from './LayerPanel.jsx';
-import { layerHidden } from '../layers.js';
+import { layerHidden, layerLook } from '../layers.js';
 import { collectTags, matchesTags, tagColour } from '../tags.js';
 import { presetFor } from '../relationships.js';
 import NameEditor from './NameEditor.jsx';
@@ -803,6 +803,8 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             dim: matches !== null && !matches.has(n.id),
             tagColours,
             tagMode,
+            // The colours its layers give it (line and shade), over the tag colour.
+            layerLook: n.type === 'shape' || n.type === 'text' ? null : layerLook(n.data.node.tags, layers),
             // On a shared network a tile can only be opened and read: the tools that change it are not offered.
             readOnly,
             actions: readOnly
@@ -817,7 +819,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
                 },
           },
         })),
-    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode, readOnly]
+    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode, readOnly, layers]
   );
 
   // The middle of every item, to pick the side each arrow leaves and arrives on.

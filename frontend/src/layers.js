@@ -28,3 +28,33 @@ export function layerHidden(nodes, layers, off, otherOff) {
   }
   return hidden;
 }
+
+/** Black or white text, whichever reads better on this #rrggbb background. */
+export function readableOn(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return luma > 0.6 ? '#111827' : '#ffffff';
+}
+
+/**
+ * How a tile with these tags is coloured by its layers: { color, fill } from the first layer (in the sidebar's order) that
+ * the tile is in and that has that colour, or null when no layer colours it.
+ */
+export function layerLook(tags, layers) {
+  const own = new Set(tags || []);
+  let color = null;
+  let fill = null;
+  for (const layer of layers) {
+    if (!layer.tags.some((tag) => own.has(tag))) continue;
+    if (!color && layer.color) color = layer.color;
+    if (!fill && layer.fill) fill = layer.fill;
+  }
+  return color || fill ? { color, fill } : null;
+}
+
+/** A light shade of a #rrggbb colour: the colour mixed with white. Used as the default fill for a layer's line colour. */
+export function lighten(hex, amount = 0.82) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c) => Math.round(c + (255 - c) * amount).toString(16).padStart(2, '0');
+  return `#${mix((n >> 16) & 255)}${mix((n >> 8) & 255)}${mix(n & 255)}`;
+}

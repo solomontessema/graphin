@@ -8,6 +8,7 @@ import ReferencesBadge from './ReferencesBadge.jsx';
 import TexText from './TexText.jsx';
 import RichText from './RichText.jsx';
 import { tagColour } from '../tags.js';
+import { readableOn } from '../layers.js';
 
 // The largest title size that fits a box with room to spare, from a rough count of the characters that fit on a line.
 // Bold letters are wide, words break early, and the box keeps a margin, so the estimate is cautious.
@@ -29,7 +30,7 @@ function fitTitleSize(title, width, height) {
  */
 export default function GraphNode({ id, data, selected }) {
   const zoom = useStore((state) => state.transform[2]);
-  const { node, dim, highlight, actions, tagColours, tagMode, readOnly } = data;
+  const { node, dim, highlight, actions, tagColours, tagMode, readOnly, layerLook } = data;
   // Detail grows smoothly with the zoom instead of switching in steps. Under 40% only the title shows. Above that the
   // title shrinks gradually from its big far-out size to its normal size, the commentary appears one line at a time
   // (fading in) until 100%, where all of it shows, and the badge and picture fade in.
@@ -128,6 +129,9 @@ export default function GraphNode({ id, data, selected }) {
     : tagMode === 'fill'
       ? { '--node-fill': `color-mix(in srgb, ${tint} 22%, white)`, '--node-text': '#111827' }
       : { '--node-frame': tint, '--node-frame-w': '4px' };
+  // Layers colour a tile too: a line colour for its frame and a shade for its background. They win over the tag colour.
+  if (layerLook?.color) Object.assign(tintVars, { '--node-frame': layerLook.color, '--node-frame-w': '4px' });
+  if (layerLook?.fill) Object.assign(tintVars, { '--node-fill': layerLook.fill, '--node-text': readableOn(layerLook.fill) });
 
   return (
     <div className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>

@@ -447,7 +447,15 @@ final class NetworkController extends BaseController
                     $tags[] = $tag;
                 }
             }
-            $clean[] = ['id' => $id, 'name' => mb_substr($name, 0, 60), 'tags' => array_slice($tags, 0, 200)];
+            $entry = ['id' => $id, 'name' => mb_substr($name, 0, 60), 'tags' => array_slice($tags, 0, 200)];
+            // Optional colours: the line (frame) colour and the shade (fill) of the layer's tiles.
+            foreach (['color', 'fill'] as $field) {
+                $value = $layer[$field] ?? null;
+                if (is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1) {
+                    $entry[$field] = strtolower($value);
+                }
+            }
+            $clean[] = $entry;
         }
         return $clean;
     }

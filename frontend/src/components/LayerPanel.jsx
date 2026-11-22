@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { layersOf, newLayerId } from '../layers.js';
+import { layersOf, lighten, newLayerId } from '../layers.js';
 import { tagColour } from '../tags.js';
 
 /**
@@ -54,14 +54,14 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
   });
 
   function startNew() {
-    setEditing({ id: newLayerId(), name: '', tags: [], isNew: true });
+    setEditing({ id: newLayerId(), name: '', tags: [], color: '', fill: '', isNew: true });
   }
 
   function save(event) {
     event.preventDefault();
     const name = editing.name.trim();
     if (!name) return;
-    const layer = { id: editing.id, name, tags: editing.tags };
+    const layer = { id: editing.id, name, tags: editing.tags, ...(editing.color ? { color: editing.color } : {}), ...(editing.fill ? { fill: editing.fill } : {}) };
     onSave(editing.isNew ? [...layers, layer] : layers.map((l) => (l.id === layer.id ? layer : l)));
     setEditing(null);
   }
@@ -122,6 +122,9 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
           {layers.map((layer) => (
             <li key={layer.id} className={off.has(layer.id) ? 'off' : ''}>
               <input type="checkbox" checked={!off.has(layer.id)} onChange={() => onToggle(layer.id)} aria-label={`Show the layer ${layer.name}`} />
+              {(layer.color || layer.fill) && (
+                <span className="layer-swatch" style={{ background: layer.fill || 'transparent', borderColor: layer.color || 'var(--border)' }} title="The colours this layer gives its tiles" aria-hidden="true" />
+              )}
               <span className="layer-name" title={layer.tags.join(', ') || 'No tags yet'}>
                 {layer.name}
               </span>
@@ -170,6 +173,27 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
               autoFocus
             />
           </label>
+          <div className="layer-colours">
+            <label>
+              Line colour
+              <span className="colour-pick">
+                <input
+                  type="color"
+                  value={editing.color || '#2563eb'}
+                  onChange={(e) => setEditing({ ...editing, color: e.target.value, fill: editing.fill || lighten(e.target.value) })}
+                />
+                {editing.color && <button type="button" className="ghost small" onClick={() => setEditing({ ...editing, color: '' })}>None</button>}
+              </span>
+            </label>
+            <label>
+              Shade (fill)
+              <span className="colour-pick">
+                <input type="color" value={editing.fill || '#dbeafe'} onChange={(e) => setEditing({ ...editing, fill: e.target.value })} />
+                {editing.fill && <button type="button" className="ghost small" onClick={() => setEditing({ ...editing, fill: '' })}>None</button>}
+              </span>
+            </label>
+          </div>
+          <span className="muted small">Tiles in this layer take these colours. A tile in several layers takes them from the first of those layers in the list that has a colour.</span>
           <span className="muted small">Tiles with any of the ticked tags are in this layer.</span>
           {tags.length === 0 ? (
             <p className="muted">No tags yet. Add tags to tiles first, then group them here.</p>
