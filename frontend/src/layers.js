@@ -58,3 +58,19 @@ export function lighten(hex, amount = 0.82) {
   const mix = (c) => Math.round(c + (255 - c) * amount).toString(16).padStart(2, '0');
   return `#${mix((n >> 16) & 255)}${mix((n >> 8) & 255)}${mix(n & 255)}`;
 }
+
+/** Ready-made colour pairs for a layer: a strong line colour and a light shade that dark text reads well on. */
+export const LAYER_PRESETS = [
+  { name: 'Blue', color: '#2563eb', fill: '#dbeafe' },
+  { name: 'Sky', color: '#0891b2', fill: '#cffafe' },
+  { name: 'Teal', color: '#0f766e', fill: '#ccfbf1' },
+  { name: 'Green', color: '#15803d', fill: '#dcfce7' },
+  { name: 'Lime', color: '#65a30d', fill: '#ecfccb' },
+  { name: 'Yellow', color: '#ca8a04', fill: '#fef9c3' },
+  { name: 'Orange', color: '#d97706', fill: '#fde8c8' },
+  { name: 'Red', color: '#dc2626', fill: '#fee2e2' },
+  { name: 'Pink', color: '#be185d', fill: '#fce7f3' },
+  { name: 'Purple', color: '#7c3aed', fill: '#ede9fe' },
+  { name: 'Indigo', color: '#4f46e5', fill: '#e0e7ff' },
+  { name: 'Slate', color: '#475569', fill: '#e2e8f0' },
+];

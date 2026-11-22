@@ -2053,3 +2053,7 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 .layer-colours label { flex-direction: row !important; align-items: center; gap: 8px !important; }
 .colour-pick { display: inline-flex; align-items: center; gap: 4px; }
 .colour-pick input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; }
+
+.layer-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.layer-preset { width: 26px; height: 26px; padding: 0; border: 3px solid; border-radius: 6px; cursor: pointer; box-sizing: border-box; }
+.layer-preset.chosen { outline: 2px solid var(--text, #111827); outline-offset: 2px; }

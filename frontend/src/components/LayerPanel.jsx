@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { layersOf, lighten, newLayerId } from '../layers.js';
+import { LAYER_PRESETS, layersOf, lighten, newLayerId } from '../layers.js';
 import { tagColour } from '../tags.js';
 
 /**
@@ -173,6 +173,23 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
               autoFocus
             />
           </label>
+          <div className="layer-presets" role="group" aria-label="Ready-made colours">
+            {LAYER_PRESETS.map((preset) => {
+              const chosen = editing.color === preset.color && editing.fill === preset.fill;
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  className={`layer-preset${chosen ? ' chosen' : ''}`}
+                  style={{ background: preset.fill, borderColor: preset.color }}
+                  onClick={() => setEditing({ ...editing, color: preset.color, fill: preset.fill })}
+                  aria-label={`${preset.name} colours`}
+                  aria-pressed={chosen}
+                  title={preset.name}
+                />
+              );
+            })}
+          </div>
           <div className="layer-colours">
             <label>
               Line colour
@@ -193,7 +210,7 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
               </span>
             </label>
           </div>
-          <span className="muted small">Tiles in this layer take these colours. A tile in several layers takes them from the first of those layers in the list that has a colour.</span>
+          <span className="muted small">Pick a ready-made pair above or choose your own colours. Tiles in this layer take these colours. A tile in several layers takes them from the first of those layers in the list that has a colour.</span>
           <span className="muted small">Tiles with any of the ticked tags are in this layer.</span>
           {tags.length === 0 ? (
             <p className="muted">No tags yet. Add tags to tiles first, then group them here.</p>
