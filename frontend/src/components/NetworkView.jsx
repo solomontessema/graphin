@@ -197,10 +197,25 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
   const [tagMatch, setTagMatch] = useState('any');
   const [tagPanelOpen, setTagPanelOpen] = useState(false);
   // Layers: named groups of tags (saved with the network), which layers are switched off, and whether the tiles in no layer
-  // are. What is switched off is for this screen only and starts again as all on.
+  // are. What is switched off is remembered in this browser for each graph, so it is still so after a refresh.
+  const layersKey = `graphin:layers-off:${networkId}`;
+  const savedLayers = (() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(layersKey)) || {};
+    } catch {
+      return {};
+    }
+  })();
   const [layers, setLayers] = useState([]);
-  const [layersOff, setLayersOff] = useState(() => new Set());
-  const [otherOff, setOtherOff] = useState(false);
+  const [layersOff, setLayersOff] = useState(() => new Set(Array.isArray(savedLayers.off) ? savedLayers.off : []));
+  const [otherOff, setOtherOff] = useState(() => savedLayers.other === true);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(layersKey, JSON.stringify({ off: [...layersOff], other: otherOff }));
+    } catch {
+      // Remembering the choice is a convenience only.
+    }
+  }, [layersKey, layersOff, otherOff]);
   // Where the layers sidebar is: 'pinned' (docked open), 'auto' (a slim tab that opens when the pointer is on it) or 'hidden'.
   // The choice is remembered in this browser. Until one is made, a graph with layers shows it pinned (on a phone, as a tab).
   const [layerChoice, setLayerChoice] = useState(() => {
@@ -555,6 +570,9 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         setNetworkName(graph.network.name);
         setTagColours(graph.network.tag_colors || {});
         setLayers(graph.network.layers || []);
+        // A layer that has been deleted since is no longer switched off.
+        const known = new Set((graph.network.layers || []).map((l) => l.id));
+        setLayersOff((off) => (off.size && [...off].some((id) => !known.has(id)) ? new Set([...off].filter((id) => known.has(id))) : off));
         setRfNodes(graph.nodes.map(toFlowNode));
         setEdges(graph.edges);
         setLoaded(true);
