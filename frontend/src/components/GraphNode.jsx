@@ -10,22 +10,6 @@ import RichText from './RichText.jsx';
 import { tagColour } from '../tags.js';
 import { readableOn } from '../layers.js';
 
-// The largest title size that fits a box with room to spare, from a rough count of the characters that fit on a line.
-// Bold letters are wide, words break early, and the box keeps a margin, so the estimate is cautious.
-function fitTitleSize(title, width, height) {
-  const text = title.trim() || ' ';
-  const usableWidth = width * 0.9;
-  const usableHeight = height * 0.8;
-  for (let size = 72; size >= 14; size -= 2) {
-    const perLine = Math.max(1, Math.floor(usableWidth / (size * 0.68)));
-    const lines = Math.ceil((text.length * 1.15) / perLine);
-    // The longest word must fit on one line, or it would be broken in the middle.
-    const longest = Math.max(...text.split(/\s+/).map((word) => word.length));
-    if (longest * size * 0.62 <= usableWidth && lines * size * 1.25 <= usableHeight) return size;
-  }
-  return 14;
-}
-
 /**
  * A saved link on the canvas. The tile's box never depends on the zoom (it is sized by its full content, kept in an
  * invisible copy), so tiles and arrows scale together. What is shown inside changes with the zoom (semantic zoom): far out
@@ -110,22 +94,48 @@ export default function GraphNode({ id, data, selected }) {
     return () => observer.disconnect();
   }, []);
 
-  // The text is drawn larger as the zoom falls, but more slowly than the tile shrinks. It never grows past what lets the
-  // title fit inside the tile.
-  const fitScale = box
-    ? fitTitleSize(node.title, circle ? box.w * 0.7 : round ? box.w * 0.78 : box.w - 28, circle ? box.h * 0.7 : round ? box.h * 0.55 : box.h * 0.8) / 14
-    : 1;
-  // Where only the title is left (under 40%) it grows to the largest size that fits the tile, so there is room for big text
-  // that can be read from far away. It eases up to that size as the description fades out.
-  const usual = Math.min(textScale(zoom), fitScale);
-  const scale = Math.max(1, usual + (fitScale - usual) * (1 - ease(0.3, 0.45)));
+  // How much the title can be enlarged and still fit inside the tile, found by measuring a hidden copy of the title (words
+  // break if they must). It is only needed once the view is zoomed out.
+  const probeRef = useRef(null);
+  const zoomedOut = zoom < 0.9;
+  const [titleFit, setTitleFit] = useState({ s: 1, breaks: true });
+  useLayoutEffect(() => {
+    const probe = probeRef.current;
+    if (!probe || !box) return;
+    const width = circle ? box.w * 0.7 : round ? box.w * 0.78 : box.w - 12;
+    const height = circle ? box.h * 0.7 : round ? box.h * 0.55 : box.h - 12;
+    const fits = (s) => {
+      probe.style.width = `${width / s}px`;
+      // It must fit in height, and no unbroken word may stick out at the side.
+      return probe.offsetHeight * s <= height && probe.scrollWidth <= Math.ceil(width / s) + 1;
+    };
+    // The largest enlargement that fits, searched between 1 and 10 times.
+    const search = (wrap) => {
+      probe.style.overflowWrap = wrap;
+      if (!fits(1)) return 1;
+      let lo = 1;
+      let hi = 10;
+      for (let i = 0; i < 9; i += 1) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) lo = mid;
+        else hi = mid;
+      }
+      return lo;
+    };
+    // A word is only broken when keeping it whole would cost a quarter or more of the size.
+    const whole = search('normal');
+    const broken = search('anywhere');
+    const next = whole >= broken * 0.75 ? { s: whole, breaks: false } : { s: broken, breaks: true };
+    setTitleFit((prev) => (Math.abs(prev.s - next.s) < 0.01 && prev.breaks === next.breaks ? prev : next));
+  }, [box?.w, box?.h, node.title, round, circle, zoomedOut]);
+
+  // The text is drawn larger as the zoom falls, but more slowly than the tile shrinks, and never so large that the title no
+  // longer fits the tile. Where only the title is left (under 40%) the title fills the tile: it is drawn as large as fits.
+  // The description under it is whatever fits in the rest of the tile, cut off softly at the tile's edge.
+  const usual = Math.min(textScale(zoom, 0.9), titleFit.s);
+  const scale = zoom >= 1 ? 1 : Math.max(1, usual + (titleFit.s - usual) * (1 - ease(0.3, 0.45)));
   // The title is bold when far, easing to its normal weight as the zoom rises.
-  const titleStyle = zoom < 0.8 ? { fontWeight: Math.round(800 - 200 * near) } : undefined;
-  // The commentary shows one more line at each step of the zoom until all of it shows at 100%. The number of lines it has
-  // in all is estimated from its length and the width of the text (narrower, the larger the text is drawn).
-  const textWidth = (round ? (shape === 'ellipse' ? 200 : 180) : baseW - 16) / scale;
-  const totalLines = Math.max(2, Math.ceil((node.commentary?.length ?? 0) / Math.max(12, Math.floor(textWidth / 6.6))));
-  const commentaryLines = zoom >= 1 ? null : Math.max(1, Math.round(1 + ((zoom - 0.4) / 0.6) * (totalLines - 1)));
+  const titleStyle = zoom < 0.8 ? { fontWeight: Math.round(800 - 200 * near), overflowWrap: titleFit.breaks ? 'anywhere' : 'normal' } : undefined;
 
   // Broken images hide themselves rather than showing a broken-image icon.
   const hideOnError = (event) => {
@@ -175,10 +185,7 @@ export default function GraphNode({ id, data, selected }) {
         </div>
 
         {!hidden && node.commentary && (
-          <div
-            className={`node-commentary fade${!ghost && commentaryLines ? ' clamped' : ''}`}
-            style={ghost ? undefined : { opacity: fadeCommentary, WebkitLineClamp: commentaryLines ?? undefined }}
-          >
+          <div className="node-commentary fade" style={ghost ? undefined : { opacity: fadeCommentary }}>
             <RichText text={node.commentary} />
           </div>
         )}
@@ -225,13 +232,20 @@ export default function GraphNode({ id, data, selected }) {
         lineStyle={{ borderWidth: 6, borderColor: 'transparent' }}
       />
 
+      {/* A hidden copy of the title, measured to find how large it can be drawn inside the tile. */}
+      {zoomedOut && (
+        <div className="node-title tile-probe" ref={probeRef} aria-hidden="true">
+          <TexText text={node.title} />
+        </div>
+      )}
+
       <div className="tile-stack">
         {/* An invisible copy of the full content gives the tile its size at every zoom. */}
         <div className="tile-ghost" ref={contentRef} aria-hidden="true">
           {content(true)}
         </div>
-        <div className={`tile-view${zoom < 1 ? ' clipped' : ''}`} ref={viewRef}>
-          <div className="tile-scale" style={{ width: `${100 / scale}%`, transform: `scale(${scale})` }}>
+        <div className={`tile-view${zoom < 1 ? ' clipped' : ''}${far ? ' title-only' : ''}`} ref={viewRef}>
+          <div className="tile-scale" style={{ width: `${100 / scale}%`, height: far ? `${100 / scale}%` : undefined, transform: `scale(${scale})` }}>
             {content(false)}
           </div>
         </div>
