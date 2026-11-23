@@ -1925,6 +1925,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             relations={relationsOf(maximized.id)}
             onOpenTile={(id) => setMaximized({ id })}
             tagColours={tagColours}
+            look={layerLook(rfNodes.find((n) => n.id === maximized.id).data.node.tags, layers)}
             onEdit={
               readOnly
                 ? undefined
@@ -1969,7 +1970,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
       )}
 
       {showBookmarklet && <BookmarkletDialog onClose={() => setShowBookmarklet(false)} />}
-      {shareOpen && <ShareDialog networkId={networkId} onClose={() => setShareOpen(false)} />}}
+      {shareOpen && <ShareDialog networkId={networkId} onClose={() => setShareOpen(false)} />}
 
       {wikiPreview && (
         <TilePreviewWindow
