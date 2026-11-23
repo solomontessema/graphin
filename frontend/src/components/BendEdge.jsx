@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow, useStore } from '@xyflow/react';
+import { textScale } from '../utils.js';
 import { tagColour } from '../tags.js';
 
 // How far, in screen pixels, the pointer must move before pressing the label or a point counts as a drag and not a click.
@@ -52,6 +53,8 @@ const pointOn = ([a, c1, c2, b], t) => {
  */
 export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data }) {
   const { screenToFlowPosition } = useReactFlow();
+  // The label is drawn larger when zoomed out, but more slowly than the line shrinks, so it stays readable.
+  const labelScale = useStore((state) => textScale(state.transform[2], 0.5));
   const { lines = [], pts: saved = [], active = false, actions, twoWay = false, tagColours } = data;
   const drag = useRef(null);
   const dragged = useRef(false);
@@ -235,7 +238,7 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
       <EdgeLabelRenderer>
         <div
           className="edge-label-chip nodrag nopan"
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+          style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px) scale(${labelScale})` }}
           title="Drag to bend the line. Double-click to straighten it."
           onPointerDown={onLabelDown}
           onPointerMove={onMove}

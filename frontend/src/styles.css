@@ -488,12 +488,12 @@ button.on {
 }
 
 /* A circle or ellipse measures its content at a fixed text width, then grows until that content fits inside it. */
-.link-node.shape-circle .tile-content {
+.link-node.shape-circle .tile-stack {
   width: 180px;
   margin: 0 auto;
 }
 
-.link-node.shape-ellipse .tile-content {
+.link-node.shape-ellipse .tile-stack {
   width: 200px;
   margin: 0 auto;
 }
@@ -505,6 +505,22 @@ button.on {
 
 .link-node.dim {
   opacity: 0.3;
+}
+
+/* While zooming, the commentary shows as many lines as the zoom allows, ending in "…" (the count is set on the
+   element). Parts that appear with the zoom fade in, and the title eases between its sizes. */
+.node-commentary.clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fade {
+  transition: opacity 0.2s ease;
+}
+
+.node-title {
+  transition: font-size 0.2s ease, font-weight 0.2s ease;
 }
 
 .node-thumb {
@@ -2000,3 +2016,11 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 .layer-presets { display: flex; flex-wrap: wrap; gap: 6px; }
 .layer-preset { width: 26px; height: 26px; padding: 0; border: 3px solid; border-radius: 6px; cursor: pointer; box-sizing: border-box; }
 .layer-preset.chosen { outline: 2px solid var(--text, #111827); outline-offset: 2px; }
+
+/* The tile's content: an invisible full copy that sets the tile's size, and the visible layer on top of it, which is scaled
+   (the text is drawn larger when zoomed out) and cut off at the tile's edge. */
+.tile-stack { display: grid; }
+.tile-ghost { grid-area: 1 / 1; visibility: hidden; pointer-events: none; }
+.tile-view { grid-area: 1 / 1; contain: size; overflow: hidden; min-width: 0; }
+.tile-view.clipped { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent); }
+.tile-scale { transform-origin: top left; }

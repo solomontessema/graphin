@@ -82,3 +82,12 @@ export function readableText(hex) {
   const againstDark = (luminance + 0.05) / (0.0086 + 0.05); // #111827, the dark text colour
   return againstWhite >= againstDark ? '#ffffff' : '#111827';
 }
+
+/**
+ * How much larger than the tiles' own scale the text, and the relationship labels, are drawn at this zoom. At 100% and above
+ * it is 1. Zoomed out it grows, but more slowly than the picture shrinks (the text on the screen only shrinks by the zoom
+ * to the power 1 - rate), so it stays readable at a distance. The text in tiles uses a rate of 0.7 and the labels 0.5.
+ */
+export function textScale(zoom, rate = 0.7) {
+  return zoom >= 1 ? 1 : Math.min(4, Math.pow(zoom, -rate));
+}
