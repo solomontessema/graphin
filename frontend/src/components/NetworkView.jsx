@@ -1925,7 +1925,6 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             relations={relationsOf(maximized.id)}
             onOpenTile={(id) => setMaximized({ id })}
             tagColours={tagColours}
-            look={layerLook(rfNodes.find((n) => n.id === maximized.id).data.node.tags, layers)}
             onEdit={
               readOnly
                 ? undefined

@@ -5,7 +5,6 @@ import { KindIcon, ReferencePreview, referenceName } from './ReferencesBadge.jsx
 import { kindOf, linksOf, mediaOf } from '../links.js';
 import { hostFromUrl } from '../utils.js';
 import { tagColour } from '../tags.js';
-import { readableOn } from '../layers.js';
 
 // The database stores times in UTC without a zone, so one is added before the date is read.
 function formatDate(value) {
@@ -188,20 +187,11 @@ function RelationList({ relations, show, hide, onOpenTile }) {
   );
 }
 
-/** The colours the tile's layers give it, as the enlarged tile's frame and background (nothing when no layer colours it). */
-function maxLookStyle(look) {
-  if (!look) return undefined;
-  const style = {};
-  if (look.fill) Object.assign(style, { background: look.fill, color: readableOn(look.fill) });
-  if (look.color) Object.assign(style, { border: `5px solid ${look.color}`, boxSizing: 'border-box' });
-  return style;
-}
-
 /**
  * A tile enlarged to fill the canvas: its content, its external references (hover one to preview it), and its
  * relationships to and from other tiles (hover one to preview that tile; click it to open that tile here instead).
  */
-export default function MaximizedTile({ node, relations, tagColours, look, onEdit, onClose, onOpenTile }) {
+export default function MaximizedTile({ node, relations, tagColours, onEdit, onClose, onOpenTile }) {
   // The one floating preview: { kind: 'link', link } or { kind: 'tile', node }, or null.
   const [preview, setPreview] = useState(null);
   const closing = useRef(null);
@@ -232,7 +222,7 @@ export default function MaximizedTile({ node, relations, tagColours, look, onEdi
   const ordered = [...relations.filter((r) => r.outgoing), ...relations.filter((r) => !r.outgoing)];
 
   return (
-    <div className="max-tile" style={maxLookStyle(look)}>
+    <div className="max-tile">
       <div className="focus-bar">
         <div className="max-back">
           <button type="button" className="ghost small" onClick={onClose}>
