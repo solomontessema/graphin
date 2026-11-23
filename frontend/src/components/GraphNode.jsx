@@ -16,7 +16,7 @@ function fitTitleSize(title, width, height) {
   const text = title.trim() || ' ';
   const usableWidth = width * 0.9;
   const usableHeight = height * 0.8;
-  for (let size = 44; size >= 14; size -= 2) {
+  for (let size = 72; size >= 14; size -= 2) {
     const perLine = Math.max(1, Math.floor(usableWidth / (size * 0.68)));
     const lines = Math.ceil((text.length * 1.15) / perLine);
     // The longest word must fit on one line, or it would be broken in the middle.
@@ -115,7 +115,10 @@ export default function GraphNode({ id, data, selected }) {
   const fitScale = box
     ? fitTitleSize(node.title, circle ? box.w * 0.7 : round ? box.w * 0.78 : box.w - 28, circle ? box.h * 0.7 : round ? box.h * 0.55 : box.h * 0.8) / 14
     : 1;
-  const scale = Math.max(1, Math.min(textScale(zoom), fitScale));
+  // Where only the title is left (under 40%) it grows to the largest size that fits the tile, so there is room for big text
+  // that can be read from far away. It eases up to that size as the description fades out.
+  const usual = Math.min(textScale(zoom), fitScale);
+  const scale = Math.max(1, usual + (fitScale - usual) * (1 - ease(0.3, 0.45)));
   // The title is bold when far, easing to its normal weight as the zoom rises.
   const titleStyle = zoom < 0.8 ? { fontWeight: Math.round(800 - 200 * near) } : undefined;
   // The commentary shows one more line at each step of the zoom until all of it shows at 100%. The number of lines it has
