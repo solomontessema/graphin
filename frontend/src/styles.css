@@ -2031,3 +2031,6 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 
 /* Big titles may be hyphenated at syllables rather than cut in the middle of a word. */
 .tile-view.title-only .node-title, .tile-probe { hyphens: auto; -webkit-hyphens: auto; }
+
+/* The preview of a tile's link is drawn over the whole page, so it is never cut off by the tile or by the zoom. */
+.ref-window.ref-floating { position: fixed; z-index: 2000; width: min(680px, calc(100vw - 16px)); max-width: none; }

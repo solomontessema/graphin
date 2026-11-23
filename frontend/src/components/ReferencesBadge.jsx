@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { hostFromUrl } from '../utils.js';
 import { KIND_LABEL, kindOf } from '../links.js';
 import PageView, { useFramable } from './PageView.jsx';
@@ -69,35 +70,41 @@ export default function ReferencesBadge({ references }) {
   const close = () => {
     closing.current = setTimeout(() => setShown(false), 400);
   };
-  // The window opens level with the badge. Where that would cut it off at the edge of the screen it is moved just
-  // enough to stay in view. The offsets are in canvas units, relative to where it would open.
+  // The window is drawn on the page itself, not inside the tile, so the tile cannot cut it off or shrink it with the zoom: it
+  // is always the same readable size on the screen. It opens level with the badge, and where that would cut it off at the
+  // edge of the screen it is moved just enough to stay in view.
+  const blockRef = useRef(null);
   const windowRef = useRef(null);
-  const [shift, setShift] = useState(null);
+  const [place, setPlace] = useState(null);
   useLayoutEffect(() => {
     const el = windowRef.current;
-    if (!shown || !el) {
-      setShift(null);
+    const block = blockRef.current;
+    if (!shown || !el || !block) {
+      setPlace(null);
       return;
     }
-    const tileEl = el.closest('.react-flow__node');
-    const badge = el.offsetParent?.getBoundingClientRect();
-    if (!tileEl || !badge) return;
-    const tile = tileEl.getBoundingClientRect();
+    const anchor = block.getBoundingClientRect();
     const box = el.getBoundingClientRect();
-    const zoom = tile.width / tileEl.offsetWidth || 1;
     const margin = 8;
-    const top = Math.min(Math.max(badge.top, margin), window.innerHeight - box.height - margin);
-    const left = Math.min(Math.max(badge.left + 64 * zoom, margin), window.innerWidth - box.width - margin);
-    setShift({ top: (top - badge.top) / zoom, left: (left - badge.left) / zoom });
+    const top = Math.min(Math.max(anchor.top, margin), Math.max(margin, window.innerHeight - box.height - margin));
+    const left = Math.min(Math.max(anchor.left + 64, margin), Math.max(margin, window.innerWidth - box.width - margin));
+    setPlace({ top, left });
   }, [shown]);
 
   const current = references[Math.min(active, references.length - 1)];
 
   return (
-    <div className="ref-block nodrag">
+    <div className="ref-block nodrag" ref={blockRef}>
       <span className="ref-heading">References:</span>
-      {shown && (
-        <div ref={windowRef} className="page-window ref-window nowheel" style={shift ?? undefined} onMouseEnter={open} onMouseLeave={close}>
+      {shown &&
+        createPortal(
+        <div
+          ref={windowRef}
+          className="page-window ref-window ref-floating nowheel"
+          style={place ? { top: place.top, left: place.left } : { top: -9999, left: -9999 }}
+          onMouseEnter={open}
+          onMouseLeave={close}
+        >
           <div className="page-window-bar">
             <span className="ref-window-title">{referenceName(current)}</span>
             <button
@@ -116,7 +123,8 @@ export default function ReferencesBadge({ references }) {
           <div className="ref-body">
             <ReferencePreview reference={current} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Only the links open the preview window, so hovering the rest of the tile does not. */}
       <ul className="tile-ref-list" onMouseLeave={close}>
