@@ -454,7 +454,7 @@ button.on {
   height: auto;
 }
 
-/* Tile shapes, chosen in the item's card. A circle is square, so its text is centred inside it. */
+/* Tile shapes, chosen in the item's card. A circle is square; its block of text sits in the middle of it, but the text itself is left-aligned like every other tile. */
 .link-node.shape-rounded {
   border-radius: 26px;
 }
@@ -470,7 +470,7 @@ button.on {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  text-align: center;
+  text-align: left;
 }
 
 .link-node.shape-circle {
@@ -480,7 +480,7 @@ button.on {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  text-align: center;
+  text-align: left;
 }
 
 .link-node.shape-circle .node-title {
@@ -547,10 +547,6 @@ button.on {
   transition: font-size 0.2s ease, font-weight 0.2s ease;
 }
 
-.node-title.centred {
-  text-align: center;
-}
-
 /* Zoomed out: the tile keeps its size and shows only its title, bold and sized to fit (the size is set on the title). */
 .link-node.compact {
   padding: 6px 10px;
@@ -560,7 +556,7 @@ button.on {
 .link-node.compact .node-title {
   font-weight: 800;
   line-height: 1.15;
-  text-align: center;
+  text-align: left;
   white-space: normal;
 }
 

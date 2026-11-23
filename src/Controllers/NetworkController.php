@@ -455,6 +455,11 @@ final class NetworkController extends BaseController
                     $entry[$field] = strtolower($value);
                 }
             }
+            // Optional shape for every tile in the layer.
+            $shape = $layer['shape'] ?? null;
+            if (is_string($shape) && in_array($shape, ['rect', 'rounded', 'pill', 'ellipse', 'circle'], true)) {
+                $entry['shape'] = $shape;
+            }
             $clean[] = $entry;
         }
         return $clean;

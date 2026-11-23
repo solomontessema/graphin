@@ -1330,7 +1330,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
   // follows the text. Circles keep their size.
   function growTileForText(node) {
     const item = node.data.node;
-    if (item.type === 'text' || item.type === 'shape' || item.shape === 'circle') return;
+    if (item.type === 'text' || item.type === 'shape' || (layerLook(item.tags, layers)?.shape || item.shape) === 'circle') return;
     if (getViewport().zoom < 1) return;
     const current = item.width ?? getNode(node.id)?.measured?.width ?? 220;
     const width = Math.max(current, 320);

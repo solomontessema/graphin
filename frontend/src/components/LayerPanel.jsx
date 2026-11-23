@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LAYER_PRESETS, layersOf, lighten, newLayerId } from '../layers.js';
+import { LAYER_PRESETS, LAYER_SHAPES, layersOf, lighten, newLayerId } from '../layers.js';
 import { tagColour } from '../tags.js';
 
 /**
@@ -54,14 +54,14 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
   });
 
   function startNew() {
-    setEditing({ id: newLayerId(), name: '', tags: [], color: '', fill: '', isNew: true });
+    setEditing({ id: newLayerId(), name: '', tags: [], color: '', fill: '', shape: '', isNew: true });
   }
 
   function save(event) {
     event.preventDefault();
     const name = editing.name.trim();
     if (!name) return;
-    const layer = { id: editing.id, name, tags: editing.tags, ...(editing.color ? { color: editing.color } : {}), ...(editing.fill ? { fill: editing.fill } : {}) };
+    const layer = { id: editing.id, name, tags: editing.tags, ...(editing.color ? { color: editing.color } : {}), ...(editing.fill ? { fill: editing.fill } : {}), ...(editing.shape ? { shape: editing.shape } : {}) };
     onSave(editing.isNew ? [...layers, layer] : layers.map((l) => (l.id === layer.id ? layer : l)));
     setEditing(null);
   }
@@ -210,7 +210,18 @@ export default function LayerPanel({ mode, onMode, layers, off, otherOff, tags, 
               </span>
             </label>
           </div>
-          <span className="muted small">Pick a ready-made pair above or choose your own colours. Tiles in this layer take these colours. A tile in several layers takes them from the first of those layers in the list that has a colour.</span>
+          <label>
+            Shape of the tiles
+            <select value={editing.shape || ''} onChange={(e) => setEditing({ ...editing, shape: e.target.value })}>
+              <option value="">Keep each tile's own shape</option>
+              {LAYER_SHAPES.map((shape) => (
+                <option key={shape.id} value={shape.id}>
+                  {shape.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="muted small">Pick a ready-made pair above or choose your own colours. Tiles in this layer take these colours and this shape. A tile in several layers takes each of them from the first of those layers in the list that sets it.</span>
           <span className="muted small">Tiles with any of the ticked tags are in this layer.</span>
           {tags.length === 0 ? (
             <p className="muted">No tags yet. Add tags to tiles first, then group them here.</p>

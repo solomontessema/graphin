@@ -37,19 +37,21 @@ export function readableOn(hex) {
 }
 
 /**
- * How a tile with these tags is coloured by its layers: { color, fill } from the first layer (in the sidebar's order) that
- * the tile is in and that has that colour, or null when no layer colours it.
+ * How a tile with these tags is coloured by its layers: { color, fill, shape } where each comes from the first layer (in the sidebar's order) that
+ * the tile is in and that sets it, or null when no layer styles it.
  */
 export function layerLook(tags, layers) {
   const own = new Set(tags || []);
   let color = null;
   let fill = null;
+  let shape = null;
   for (const layer of layers) {
     if (!layer.tags.some((tag) => own.has(tag))) continue;
     if (!color && layer.color) color = layer.color;
     if (!fill && layer.fill) fill = layer.fill;
+    if (!shape && layer.shape) shape = layer.shape;
   }
-  return color || fill ? { color, fill } : null;
+  return color || fill || shape ? { color, fill, shape } : null;
 }
 
 /** A light shade of a #rrggbb colour: the colour mixed with white. Used as the default fill for a layer's line colour. */
@@ -73,4 +75,13 @@ export const LAYER_PRESETS = [
   { name: 'Purple', color: '#7c3aed', fill: '#ede9fe' },
   { name: 'Indigo', color: '#4f46e5', fill: '#e0e7ff' },
   { name: 'Slate', color: '#475569', fill: '#e2e8f0' },
+];
+
+/** The tile shapes a layer can give its tiles. */
+export const LAYER_SHAPES = [
+  { id: 'rect', label: 'Rectangle' },
+  { id: 'rounded', label: 'Rounded rectangle' },
+  { id: 'pill', label: 'Pill' },
+  { id: 'ellipse', label: 'Ellipse' },
+  { id: 'circle', label: 'Circle' },
 ];

@@ -42,14 +42,16 @@ export default function GraphNode({ id, data, selected }) {
   const near = ease(0.3, 0.8);
   const fadeCommentary = ease(0.4, 0.6);
   const fadeExtras = ease(0.45, 0.7);
-  const circle = node.shape === 'circle';
-  const round = circle || node.shape === 'ellipse';
+  // A layer can give all its tiles one shape; it then wins over the tile's own shape.
+  const shape = layerLook?.shape || node.shape;
+  const circle = shape === 'circle';
+  const round = circle || shape === 'ellipse';
   const baseW = node.width ?? (circle ? 170 : 220);
   const baseH = node.height ?? (circle ? baseW : null);
 
   // The commentary shows one more line at each step of the zoom until all of it shows at 100%. The number of lines it
   // has in all is estimated from its length and the width of the text.
-  const textWidth = round ? (node.shape === 'ellipse' ? 200 : 180) : baseW - 16;
+  const textWidth = round ? (shape === 'ellipse' ? 200 : 180) : baseW - 16;
   const totalLines = Math.max(2, Math.ceil((node.commentary?.length ?? 0) / Math.max(12, Math.floor(textWidth / 6.6))));
   const commentaryLines = zoom >= 1 ? null : Math.max(1, Math.round(1 + ((zoom - 0.4) / 0.6) * (totalLines - 1)));
 
@@ -87,7 +89,7 @@ export default function GraphNode({ id, data, selected }) {
     selected && 'selected',
     dim && 'dim',
     highlight && 'highlight',
-    node.shape && node.shape !== 'rect' && `shape-${node.shape}`,
+    shape && shape !== 'rect' && `shape-${shape}`,
   ]
     .filter(Boolean)
     .join(' ');
@@ -114,7 +116,6 @@ export default function GraphNode({ id, data, selected }) {
       : null;
   const titleStyle =
     farTitle === null ? undefined : { fontSize: Math.round(farTitle + (14 - farTitle) * near), fontWeight: Math.round(800 - 200 * near) };
-  const titleCentred = zoom < 0.55;
 
   // Broken images hide themselves rather than showing a broken-image icon.
   const hideOnError = (event) => {
@@ -148,7 +149,7 @@ export default function GraphNode({ id, data, selected }) {
       <NodeResizer
         minWidth={140}
         minHeight={70}
-        keepAspectRatio={node.shape === 'circle'}
+        keepAspectRatio={circle}
         isVisible={selected && !readOnly}
         onResize={(_, box) => actions.resizeTile(id, box, false)}
         onResizeEnd={(_, box) => actions.resizeTile(id, box, true)}
@@ -177,7 +178,7 @@ export default function GraphNode({ id, data, selected }) {
         )}
 
         <div
-          className={`node-title${titleCentred ? ' centred' : ''}`}
+          className="node-title"
           style={titleStyle}
         >
           <TexText text={node.title} />
