@@ -498,30 +498,6 @@ button.on {
   margin: 0 auto;
 }
 
-/* Zoomed out, the content is only the title, so it takes the whole width. */
-.link-node.compact.shape-circle .tile-content,
-.link-node.compact.shape-ellipse .tile-content {
-  width: 100%;
-}
-
-/* Zoomed out, a tile shows only its title. Its shape stays: the compact rule above would otherwise square it off. */
-.link-node.compact.shape-rounded {
-  border-radius: 16px;
-}
-
-.link-node.compact.shape-pill {
-  border-radius: 999px;
-}
-
-.link-node.compact.shape-ellipse {
-  border-radius: 50%;
-}
-
-.link-node.compact.shape-circle {
-  border-radius: 50%;
-  padding: 10px;
-}
-
 .link-node.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
@@ -529,35 +505,6 @@ button.on {
 
 .link-node.dim {
   opacity: 0.3;
-}
-
-/* While zooming, the commentary shows as many lines as the zoom allows, ending in "…" (the count is set on the
-   element). Parts that appear with the zoom fade in, and the title eases between its sizes. */
-.node-commentary.clamped {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.fade {
-  transition: opacity 0.2s ease;
-}
-
-.node-title {
-  transition: font-size 0.2s ease, font-weight 0.2s ease;
-}
-
-/* Zoomed out: the tile keeps its size and shows only its title, bold and sized to fit (the size is set on the title). */
-.link-node.compact {
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-.link-node.compact .node-title {
-  font-weight: 800;
-  line-height: 1.15;
-  text-align: left;
-  white-space: normal;
 }
 
 .node-thumb {
