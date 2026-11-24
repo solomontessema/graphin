@@ -29,7 +29,6 @@ export default function GraphNode({ id, data, selected }) {
     const x = Math.min(1, Math.max(0, (zoom - from) / (to - from)));
     return x * x * (3 - 2 * x);
   };
-  const near = ease(0.3, 0.8);
   const fadeCommentary = ease(0.4, 0.6);
   const fadeExtras = ease(0.45, 0.7);
   // A layer can give all its tiles one shape; it then wins over the tile's own shape.
@@ -152,8 +151,8 @@ export default function GraphNode({ id, data, selected }) {
   // The description under it is whatever fits in the rest of the tile, cut off softly at the tile's edge.
   const usual = Math.min(textScale(zoom, 0.9), titleFit.s);
   const scale = zoom >= 1 ? 1 : Math.max(1, usual + (titleFit.s - usual) * (1 - ease(0.3, 0.45)));
-  // The title is bold when far, easing to its normal weight as the zoom rises.
-  const titleStyle = zoom < 0.8 ? { fontWeight: Math.round(800 - 200 * near), overflowWrap: titleFit.breaks ? 'anywhere' : 'normal' } : undefined;
+  // The title is in a light, regular weight when it is all that shows, easing to its normal weight as the zoom rises.
+  const titleStyle = zoom < 0.8 ? { fontWeight: Math.round(400 + 200 * ease(0.4, 0.8)), overflowWrap: titleFit.breaks ? 'anywhere' : 'normal' } : undefined;
 
   // Broken images hide themselves rather than showing a broken-image icon.
   const hideOnError = (event) => {

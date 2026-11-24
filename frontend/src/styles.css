@@ -2027,7 +2027,7 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 
 /* A tile showing only its title: the title is centred in the tile. */
 .tile-view.title-only .tile-scale { display: flex; flex-direction: column; justify-content: center; }
-.tile-probe { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; font-weight: 800; }
+.tile-probe { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; font-weight: 400; }
 
 /* Big titles may be hyphenated at syllables rather than cut in the middle of a word. */
 .tile-view.title-only .node-title, .tile-probe { hyphens: auto; -webkit-hyphens: auto; }

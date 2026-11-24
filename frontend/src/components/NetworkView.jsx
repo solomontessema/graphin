@@ -387,24 +387,32 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
     }
   });
 
-  // The sketchy look (lines and outlines drawn like by hand). The choice is remembered for this network on this computer.
+  // The sketchy look (lines and outlines drawn like by hand) is a setting of the graph: the owner switches it and it is saved with
+  // the graph, so a shared graph shows it too. A reader of a shared graph can switch it for themselves; that choice is
+  // remembered in this browser.
+  const [graphSketchy, setGraphSketchy] = useState(false);
   const sketchKey = `graphin:sketchy:${networkId}`;
-  const [sketchy, setSketchy] = useState(() => {
+  const [readerSketchy, setReaderSketchy] = useState(() => {
     try {
-      return window.localStorage.getItem(sketchKey) === 'on';
+      return window.localStorage.getItem(sketchKey);
     } catch {
-      return false;
+      return null;
     }
   });
+  const sketchy = readOnly && readerSketchy ? readerSketchy === 'on' : graphSketchy;
   function toggleSketchy() {
-    setSketchy((on) => {
+    const next = !sketchy;
+    if (readOnly) {
+      setReaderSketchy(next ? 'on' : 'off');
       try {
-        window.localStorage.setItem(sketchKey, on ? 'off' : 'on');
+        window.localStorage.setItem(sketchKey, next ? 'on' : 'off');
       } catch {
         // Remembering the choice is a convenience only.
       }
-      return !on;
-    });
+      return;
+    }
+    setGraphSketchy(next);
+    api.setSketchy(networkId, next).catch((e) => setError(e.message));
   }
 
   // The world map behind the Geo layout. Applying Geo turns it on, any other layout turns it off, and the button
@@ -590,6 +598,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         setNetworkName(graph.network.name);
         setTagColours(graph.network.tag_colors || {});
         setLayers(graph.network.layers || []);
+        setGraphSketchy(graph.network.sketchy === true);
         // A layer that has been deleted since is no longer switched off.
         const known = new Set((graph.network.layers || []).map((l) => l.id));
         setLayersOff((off) => (off.size && [...off].some((id) => !known.has(id)) ? new Set([...off].filter((id) => known.has(id))) : off));
@@ -1664,7 +1673,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
           Grid: {showGrid ? 'on' : 'off'}
         </button>
-        <button className="ghost hide-small" onClick={toggleSketchy} aria-pressed={sketchy} title="Draw the lines and outlines like by hand">
+        <button className="ghost hide-small" onClick={toggleSketchy} aria-pressed={sketchy} title={readOnly ? "Draw the lines and outlines like by hand (for you only)" : "Draw the lines and outlines like by hand. Saved with the graph, so a shared graph shows it too."}>
           Sketchy: {sketchy ? 'on' : 'off'}
         </button>
         <button
