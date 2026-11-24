@@ -1898,8 +1898,8 @@ button.on {
 .relation-type { font-weight: 600; }
 .max-tile-link { background: none; border: none; padding: 0; font: inherit; color: #1d4ed8; text-decoration: underline; cursor: pointer; text-align: left; }
 .max-tile-link:hover { color: #1e3a8a; }
-.max-preview { position: fixed; z-index: 1000; display: flex; flex-direction: column; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); overflow: hidden; }
-.max-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
+.max-preview { position: fixed; z-index: 1000; display: flex; flex-direction: column; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); overflow: hidden; }
+.max-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text); border-bottom: 1px solid var(--border); }
 .max-preview-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 16px; }
 .max-preview-body .max-heading { font-size: 20px; }
 .max-preview-body .max-media { max-height: 220px; }
