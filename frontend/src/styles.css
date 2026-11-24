@@ -1192,7 +1192,7 @@ button.on {
 /* On a circle or ellipse the corner is outside the outline, so the icons sit in the middle, near the top, inside it. */
 .link-node.shape-circle .node-tools,
 .link-node.shape-ellipse .node-tools {
-  top: 18px;
+  top: 6px;
   right: auto;
   left: 50%;
   transform: translateX(-50%);
