@@ -1,3 +1,4 @@
+import ThemeToggle from './ThemeToggle.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { COVERS, DEFAULT_COVER } from '../covers.js';
@@ -128,6 +129,7 @@ export default function NetworkList({ user, onLogout }) {
       {user && (
         <div className="account-bar">
           <span title="You are signed in as">{user.email}</span>
+          <ThemeToggle />
           <button className="ghost" onClick={onLogout}>
             Log out
           </button>

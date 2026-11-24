@@ -11,6 +11,7 @@ import {
 import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
 import MaximizedTile, { TilePreviewWindow } from './MaximizedTile.jsx';
 import { WikiContext } from './wikilinks.jsx';
 import EdgeCard from './EdgeCard.jsx';
@@ -1754,6 +1755,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             Share
           </button>
         )}
+        <ThemeToggle />
         {readOnly ? (
           <div className="toolbar-account">
             <span className="muted small hide-small" title="Drag tiles, arrows, labels and text around freely. Nothing is saved.">

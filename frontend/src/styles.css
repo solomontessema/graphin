@@ -12,8 +12,9 @@
   color-scheme: dark;
 }
 
+/* Theme: dark by default; light when the system prefers it (Auto) or when chosen; data-theme on the page holds the choice. */
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
+  :root:not([data-theme]) {
     --bg: #f5f6f9;
     --surface: #ffffff;
     --surface-2: #eef1f6;
@@ -26,6 +27,20 @@
     --edge: #8390a6;
     color-scheme: light;
   }
+}
+
+:root[data-theme='light'] {
+  --bg: #f5f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --border: #d5dbe6;
+  --text: #1a2030;
+  --muted: #5d6779;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --danger: #c62828;
+  --edge: #8390a6;
+  color-scheme: light;
 }
 
 * {
@@ -1237,11 +1252,15 @@ button.on {
 .world-grid { stroke: #c5d6e3; stroke-width: 6; stroke-dasharray: 32 40; }
 .world-equator { stroke: #a8c0d3; stroke-width: 10; }
 @media (prefers-color-scheme: dark) {
-  .world-sea { fill: #16202b; }
-  .world-land { fill: #26303a; stroke: #3e4b58; }
-  .world-grid { stroke: #2a3947; }
-  .world-equator { stroke: #3a4d60; }
+  :where(:root:not([data-theme])) .world-sea { fill: #16202b; }
+  :where(:root:not([data-theme])) .world-land { fill: #26303a; stroke: #3e4b58; }
+  :where(:root:not([data-theme])) .world-grid { stroke: #2a3947; }
+  :where(:root:not([data-theme])) .world-equator { stroke: #3a4d60; }
 }
+:where(:root[data-theme='dark']) .world-sea { fill: #16202b; }
+:where(:root[data-theme='dark']) .world-land { fill: #26303a; stroke: #3e4b58; }
+:where(:root[data-theme='dark']) .world-grid { stroke: #2a3947; }
+:where(:root[data-theme='dark']) .world-equator { stroke: #3a4d60; }
 
 /* Other map types. Pictures are drawn by the browser; the vector types are coloured here. */
 .map-political .world-sea { fill: #cfe3f1; }
@@ -1258,12 +1277,17 @@ button.on {
 .map-outline .world-grid { stroke: #d4d4d4; }
 .map-outline .world-equator { stroke: #a3a3a3; }
 @media (prefers-color-scheme: dark) {
-  .map-political .world-sea { fill: #1d3040; }
-  .map-political .world-country { stroke: #1d2733; }
-  .map-political .world-label { fill: #e5ebf2; stroke: rgba(15, 23, 34, 0.7); }
-  .map-dark .world-sea { fill: #0f1722; }
-  .map-outline .world-sea { fill: #ffffff; }
+  :where(:root:not([data-theme])) .map-political .world-sea { fill: #1d3040; }
+  :where(:root:not([data-theme])) .map-political .world-country { stroke: #1d2733; }
+  :where(:root:not([data-theme])) .map-political .world-label { fill: #e5ebf2; stroke: rgba(15, 23, 34, 0.7); }
+  :where(:root:not([data-theme])) .map-dark .world-sea { fill: #0f1722; }
+  :where(:root:not([data-theme])) .map-outline .world-sea { fill: #ffffff; }
 }
+:where(:root[data-theme='dark']) .map-political .world-sea { fill: #1d3040; }
+:where(:root[data-theme='dark']) .map-political .world-country { stroke: #1d2733; }
+:where(:root[data-theme='dark']) .map-political .world-label { fill: #e5ebf2; stroke: rgba(15, 23, 34, 0.7); }
+:where(:root[data-theme='dark']) .map-dark .world-sea { fill: #0f1722; }
+:where(:root[data-theme='dark']) .map-outline .world-sea { fill: #ffffff; }
 
 /* Tile size slider */
 .size-bar {
@@ -2052,3 +2076,5 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 .sketch-outline { position: absolute; left: calc(var(--node-frame-w, 1px) * -1); top: calc(var(--node-frame-w, 1px) * -1); pointer-events: none; overflow: visible; fill: none; stroke: var(--node-frame, #64748b); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .link-node.sketchy:hover .sketch-outline { stroke-width: 2; }
 .graph-edge:hover .sketch-edge { stroke-width: 3.5px; }
+
+.theme-toggle { white-space: nowrap; }
