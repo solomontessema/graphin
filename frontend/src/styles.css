@@ -1189,6 +1189,15 @@ button.on {
   transition: opacity 0.15s;
 }
 
+/* On a circle or ellipse the corner is outside the outline, so the icons sit in the middle, near the top, inside it. */
+.link-node.shape-circle .node-tools,
+.link-node.shape-ellipse .node-tools {
+  top: 18px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .link-node:hover .node-tools,
 .link-node.selected .node-tools,
 .react-flow__node.selected .node-tools,
