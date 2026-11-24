@@ -12,6 +12,7 @@ import { api } from '../api.js';
 import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
+import { STYLES } from '../sketch.js';
 import MaximizedTile, { TilePreviewWindow } from './MaximizedTile.jsx';
 import { WikiContext } from './wikilinks.jsx';
 import EdgeCard from './EdgeCard.jsx';
@@ -388,32 +389,33 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
     }
   });
 
-  // The sketchy look (lines and outlines drawn like by hand) is a setting of the graph: the owner switches it and it is saved with
-  // the graph, so a shared graph shows it too. A reader of a shared graph can switch it for themselves; that choice is
-  // remembered in this browser.
-  const [graphSketchy, setGraphSketchy] = useState(false);
-  const sketchKey = `graphin:sketchy:${networkId}`;
-  const [readerSketchy, setReaderSketchy] = useState(() => {
+  // The look of the lines and outlines (clean, sketch, free hand or marker) is a setting of the graph: the owner chooses it and it
+  // is saved with the graph, so a shared graph shows it too. A reader of a shared graph can choose another for themselves; that
+  // choice is remembered in this browser.
+  const [graphLook, setGraphLook] = useState('clean');
+  const lookKey = `graphin:style:${networkId}`;
+  const [readerLook, setReaderLook] = useState(() => {
     try {
-      return window.localStorage.getItem(sketchKey);
+      return window.localStorage.getItem(lookKey);
     } catch {
       return null;
     }
   });
-  const sketchy = readOnly && readerSketchy ? readerSketchy === 'on' : graphSketchy;
-  function toggleSketchy() {
-    const next = !sketchy;
+  const look = readOnly && readerLook && STYLES.some((st) => st.id === readerLook) ? readerLook : graphLook;
+  // What the tiles and arrows are given: nothing for the clean look.
+  const sketchy = look === 'clean' ? '' : look;
+  function chooseLook(next) {
     if (readOnly) {
-      setReaderSketchy(next ? 'on' : 'off');
+      setReaderLook(next);
       try {
-        window.localStorage.setItem(sketchKey, next ? 'on' : 'off');
+        window.localStorage.setItem(lookKey, next);
       } catch {
         // Remembering the choice is a convenience only.
       }
       return;
     }
-    setGraphSketchy(next);
-    api.setSketchy(networkId, next).catch((e) => setError(e.message));
+    setGraphLook(next);
+    api.setStyle(networkId, next).catch((e) => setError(e.message));
   }
 
   // The world map behind the Geo layout. Applying Geo turns it on, any other layout turns it off, and the button
@@ -599,7 +601,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         setNetworkName(graph.network.name);
         setTagColours(graph.network.tag_colors || {});
         setLayers(graph.network.layers || []);
-        setGraphSketchy(graph.network.sketchy === true);
+        setGraphLook(graph.network.style || 'clean');
         // A layer that has been deleted since is no longer switched off.
         const known = new Set((graph.network.layers || []).map((l) => l.id));
         setLayersOff((off) => (off.size && [...off].some((id) => !known.has(id)) ? new Set([...off].filter((id) => known.has(id))) : off));
@@ -1674,9 +1676,19 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
           Grid: {showGrid ? 'on' : 'off'}
         </button>
-        <button className="ghost hide-small" onClick={toggleSketchy} aria-pressed={sketchy} title={readOnly ? "Draw the lines and outlines like by hand (for you only)" : "Draw the lines and outlines like by hand. Saved with the graph, so a shared graph shows it too."}>
-          Sketchy: {sketchy ? 'on' : 'off'}
-        </button>
+<select
+          className="hide-small"
+          value={look}
+          onChange={(e) => chooseLook(e.target.value)}
+          aria-label="Style"
+          title={readOnly ? 'How the lines and outlines are drawn (for you only)' : 'How the lines and outlines are drawn. Saved with the graph, so a shared graph shows it too.'}
+        >
+          {STYLES.map((st) => (
+            <option key={st.id} value={st.id} title={st.hint}>
+              Style: {st.label}
+            </option>
+          ))}
+        </select>
         <button
           className="ghost"
           hidden={readOnly}

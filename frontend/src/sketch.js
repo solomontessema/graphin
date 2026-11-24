@@ -7,6 +7,21 @@ import { RoughGenerator } from 'roughjs/bin/generator';
 
 const generator = new RoughGenerator();
 
+/**
+ * The looks a graph can be drawn in. clean is the plain look (nothing is sketched). The others differ in how much the lines
+ * wobble (roughness), how much they bow, whether each line is drawn twice (as with a pencil), and how thick they are.
+ */
+export const STYLES = [
+  { id: 'clean', label: 'Clean', hint: 'Crisp lines and outlines' },
+  { id: 'sketch', label: 'Sketch', hint: 'Pencil lines, drawn twice, slightly wobbly', line: { roughness: 0.9, bowing: 0.8 }, box: { roughness: 1.1, bowing: 0.9 }, width: 1 },
+  { id: 'freehand', label: 'Free hand', hint: 'One smooth, flowing pen stroke', line: { roughness: 0.45, bowing: 1.6, disableMultiStroke: true }, box: { roughness: 0.6, bowing: 1.8, disableMultiStroke: true }, width: 1 },
+  { id: 'marker', label: 'Marker', hint: 'Thick, confident marker strokes', line: { roughness: 0.6, bowing: 1, disableMultiStroke: true }, box: { roughness: 0.8, bowing: 1.1, disableMultiStroke: true }, width: 1.9 },
+];
+const BY_ID = Object.fromEntries(STYLES.map((s) => [s.id, s]));
+
+/** The stroke width factor of a look (1 for the others). */
+export const widthOf = (look) => BY_ID[look]?.width ?? 1;
+
 // Every shape made so far, by what it was made from. The list is emptied when it gets long.
 const made = new Map();
 const LIMIT = 4000;
@@ -32,19 +47,19 @@ export function seedOf(id) {
 const pathsOf = (drawable) => generator.toPaths(drawable).map((p) => p.d);
 
 /** The strokes of a line that follows the SVG path d. Returns a list of path strings. */
-export function sketchLine(d, seed, width) {
-  return remember(`l|${seed}|${width}|${d}`, () =>
-    pathsOf(generator.path(d, { seed, roughness: 0.9, bowing: 0.8, strokeWidth: width, fill: undefined, preserveVertices: false }))
+export function sketchLine(d, seed, width, look = 'sketch') {
+  return remember(`l|${look}|${seed}|${width}|${d}`, () =>
+    pathsOf(generator.path(d, { seed, ...BY_ID[look]?.line, strokeWidth: width, fill: undefined, preserveVertices: false }))
   );
 }
 
 const RADIUS = { rounded: 26, pill: 999 };
 
 /** The strokes of a tile's outline, for a box of w by h pixels. Returns a list of path strings. */
-export function sketchBox(shape, w, h, seed, width) {
-  const key = `b|${shape}|${Math.round(w)}|${Math.round(h)}|${seed}|${width}`;
+export function sketchBox(shape, w, h, seed, width, look = 'sketch') {
+  const key = `b|${look}|${shape}|${Math.round(w)}|${Math.round(h)}|${seed}|${width}`;
   return remember(key, () => {
-    const options = { seed, roughness: 1.1, bowing: 0.9, strokeWidth: width };
+    const options = { seed, ...BY_ID[look]?.box, strokeWidth: width };
     if (shape === 'ellipse' || shape === 'circle') {
       return pathsOf(generator.ellipse(w / 2, h / 2, Math.max(4, w - 2), Math.max(4, h - 2), options));
     }

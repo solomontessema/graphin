@@ -9,7 +9,7 @@ import TexText from './TexText.jsx';
 import RichText from './RichText.jsx';
 import { tagColour } from '../tags.js';
 import { readableOn } from '../layers.js';
-import { SKETCH_MIN_ZOOM, seedOf, sketchBox } from '../sketch.js';
+import { SKETCH_MIN_ZOOM, seedOf, sketchBox, widthOf } from '../sketch.js';
 
 /**
  * A saved link on the canvas. The tile's box never depends on the zoom (it is sized by its full content, kept in an
@@ -230,8 +230,8 @@ export default function GraphNode({ id, data, selected }) {
   return (
     <div ref={rootRef} className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
       {sketch && outer && (
-        <svg className="sketch-outline" width={outer.w} height={outer.h} viewBox={`0 0 ${outer.w} ${outer.h}`} aria-hidden="true">
-          {sketchBox(shape || 'rect', outer.w, outer.h, seedOf(id), 1.6).map((d, i) => (
+        <svg className="sketch-outline" style={{ strokeWidth: 1.6 * widthOf(sketchy) }} width={outer.w} height={outer.h} viewBox={`0 0 ${outer.w} ${outer.h}`} aria-hidden="true">
+          {sketchBox(shape || 'rect', outer.w, outer.h, seedOf(id), 1.6 * widthOf(sketchy), sketchy).map((d, i) => (
             <path key={i} d={d} />
           ))}
         </svg>

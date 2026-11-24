@@ -48,12 +48,12 @@ final class NetworkController extends BaseController
         $name = array_key_exists('name', $data) ? $this->requiredString($data, 'name', self::TITLE_MAX) : null;
         // Tag colours, layers and the sketchy look share one column. A call that sends only some of them leaves the rest as they are.
         $colours = false;
-        if (array_key_exists('tag_colors', $data) || array_key_exists('layers', $data) || array_key_exists('sketchy', $data)) {
+        if (array_key_exists('tag_colors', $data) || array_key_exists('layers', $data) || array_key_exists('style', $data)) {
             $stored = $this->storedParts($this->findNetwork($args['id'])['tag_colors'] ?? null);
             $newColours = array_key_exists('tag_colors', $data) ? $this->cleanTagColors($data['tag_colors']) : $stored['colours'];
             $newLayers = array_key_exists('layers', $data) ? $this->cleanLayers($data['layers']) : $stored['layers'];
-            $newSketchy = array_key_exists('sketchy', $data) ? (bool) $data['sketchy'] : $stored['sketchy'];
-            $colours = $this->encodeStored($newColours, $newLayers, $newSketchy);
+            $newStyle = array_key_exists('style', $data) ? $this->cleanStyle($data['style']) : $stored['style'];
+            $colours = $this->encodeStored($newColours, $newLayers, $newStyle);
         }
         // The cover picture of the home page tile: a link to an image, or null for the default picture.
         $hasCover = array_key_exists('cover_url', $data);
@@ -79,7 +79,7 @@ final class NetworkController extends BaseController
             }
         });
         $network = $this->findNetwork($args['id']);
-        return $this->json($response, $this->summary($network + ['node_count' => 0]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null), 'sketchy' => $this->storedParts($network['tag_colors'] ?? null)['sketchy']]);
+        return $this->json($response, $this->summary($network + ['node_count' => 0]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null), 'style' => $this->storedParts($network['tag_colors'] ?? null)['style']]);
     }
 
     /** DELETE /api/networks/{id} : removes its nodes and edges too. */
@@ -116,7 +116,7 @@ final class NetworkController extends BaseController
             [$network['id']]
         );
         return [
-            'network' => $this->summary($network + ['node_count' => count($nodes)]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null), 'sketchy' => $this->storedParts($network['tag_colors'] ?? null)['sketchy']],
+            'network' => $this->summary($network + ['node_count' => count($nodes)]) + ['tag_colors' => $this->tagColors($network['tag_colors'] ?? null), 'layers' => $this->layers($network['tag_colors'] ?? null), 'style' => $this->storedParts($network['tag_colors'] ?? null)['style']],
             'nodes' => array_map([$this, 'nodeOut'], $nodes),
             'edges' => array_map([$this, 'edgeOut'], $edges),
         ];
@@ -469,30 +469,38 @@ final class NetworkController extends BaseController
     /**
      * The column holds the tag colours, the layers under the key __layers, and under __sketchy whether the graph is drawn in
      * the sketchy, hand-made style. (One column, so the server needs no new one.)
+     * The look of the lines and outlines is kept under __style: clean (the default), sketch, freehand or marker. An older graph that
+     * has __sketchy set shows as sketch.
      *
-     * @return array{colours: array<string, string>, layers: array<int, mixed>, sketchy: bool}
+     * @return array{colours: array<string, string>, layers: array<int, mixed>, style: string}
      */
     private function storedParts(?string $json): array
     {
         $all = $json === null || $json === '' ? [] : json_decode($json, true);
         $all = is_array($all) ? $all : [];
         $layers = is_array($all['__layers'] ?? null) ? $all['__layers'] : [];
-        $sketchy = ($all['__sketchy'] ?? false) === true;
-        unset($all['__layers'], $all['__sketchy']);
-        return ['colours' => $all, 'layers' => $layers, 'sketchy' => $sketchy];
+        $style = $this->cleanStyle($all['__style'] ?? (($all['__sketchy'] ?? false) === true ? 'sketch' : 'clean'));
+        unset($all['__layers'], $all['__sketchy'], $all['__style']);
+        return ['colours' => $all, 'layers' => $layers, 'style' => $style];
     }
 
     /**
      * @param array<string, string> $colours
      * @param array<int, mixed> $layers
      */
-    private function encodeStored(array $colours, array $layers, bool $sketchy = false): ?string
+    /** One of the known looks, or clean. */
+    private function cleanStyle(mixed $style): string
+    {
+        return is_string($style) && in_array($style, ['sketch', 'freehand', 'marker'], true) ? $style : 'clean';
+    }
+
+    private function encodeStored(array $colours, array $layers, string $style = 'clean'): ?string
     {
         if ($layers !== []) {
             $colours['__layers'] = $layers;
         }
-        if ($sketchy) {
-            $colours['__sketchy'] = true;
+        if ($style !== 'clean') {
+            $colours['__style'] = $style;
         }
         return $colours === [] ? null : json_encode($colours, JSON_UNESCAPED_UNICODE);
     }
