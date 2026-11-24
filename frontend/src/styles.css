@@ -2033,4 +2033,5 @@ textarea.embed-code { width: 100%; font-family: ui-monospace, Consolas, monospac
 .tile-view.title-only .node-title, .tile-probe { hyphens: auto; -webkit-hyphens: auto; }
 
 /* The preview of a tile's link is drawn over the whole page, so it is never cut off by the tile or by the zoom. */
-.ref-window.ref-floating { position: fixed; z-index: 2000; width: min(680px, calc(100vw - 16px)); max-width: none; }
+.ref-window.ref-floating { position: fixed; z-index: 2000; width: min(880px, calc(100vw - 16px)); max-width: none; }
+.ref-window.ref-floating .ref-body { height: 580px; max-height: calc(100vh - 80px); }
