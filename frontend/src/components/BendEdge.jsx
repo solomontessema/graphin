@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow, useStore } from '@xyflow/react';
 import { textScale } from '../utils.js';
+import { SKETCH_MIN_ZOOM, seedOf, sketchLine } from '../sketch.js';
 import { tagColour } from '../tags.js';
 
 // How far, in screen pixels, the pointer must move before pressing the label or a point counts as a drag and not a click.
@@ -55,7 +56,10 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
   const { screenToFlowPosition } = useReactFlow();
   // The label is drawn larger when zoomed out, but more slowly than the line shrinks, so it stays readable.
   const labelScale = useStore((state) => textScale(state.transform[2], 0.5));
-  const { lines = [], pts: saved = [], active = false, actions, twoWay = false, tagColours } = data;
+  // The sketchy look draws the line by hand-made strokes (only when the view is close enough for the wobble to show).
+  const near = useStore((state) => state.transform[2] >= SKETCH_MIN_ZOOM);
+  const { lines = [], pts: saved = [], active = false, actions, twoWay = false, tagColours, sketchy = false } = data;
+  const sketch = sketchy && near;
   const drag = useRef(null);
   const dragged = useRef(false);
   const pathRef = useRef(null);
@@ -216,7 +220,15 @@ export default function BendEdge({ id, sourceX, sourceY, targetX, targetY, sourc
 
   return (
     <>
-      <BaseEdge id={id} path={path} style={style} interactionWidth={24} />
+      {/* The line itself. When it is sketched, this one stays as the invisible plain line that is clicked and measured. */}
+      <BaseEdge id={id} path={path} style={sketch ? { ...style, stroke: 'transparent' } : style} interactionWidth={24} />
+      {sketch && (
+        <g className="sketch-edge" fill="none" stroke={style?.stroke} strokeWidth={style?.strokeWidth || 2.5} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none">
+          {sketchLine(path, seedOf(id), style?.strokeWidth || 2.5).map((d, i) => (
+            <path key={i} d={d} />
+          ))}
+        </g>
+      )}
       <path ref={pathRef} d={path} fill="none" stroke="none" pointerEvents="none" />
       {chevrons.map((c, i) => (
         <path

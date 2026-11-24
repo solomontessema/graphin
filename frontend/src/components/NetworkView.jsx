@@ -387,6 +387,26 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
     }
   });
 
+  // The sketchy look (lines and outlines drawn like by hand). The choice is remembered for this network on this computer.
+  const sketchKey = `graphin:sketchy:${networkId}`;
+  const [sketchy, setSketchy] = useState(() => {
+    try {
+      return window.localStorage.getItem(sketchKey) === 'on';
+    } catch {
+      return false;
+    }
+  });
+  function toggleSketchy() {
+    setSketchy((on) => {
+      try {
+        window.localStorage.setItem(sketchKey, on ? 'off' : 'on');
+      } catch {
+        // Remembering the choice is a convenience only.
+      }
+      return !on;
+    });
+  }
+
   // The world map behind the Geo layout. Applying Geo turns it on, any other layout turns it off, and the button
   // switches it by hand. The choice is remembered for this network on this computer.
   const mapKey = `graphin:map:${networkId}`;
@@ -821,6 +841,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             dim: matches !== null && !matches.has(n.id),
             tagColours,
             tagMode,
+            sketchy,
             // The colours its layers give it (line and shade), over the tag colour.
             layerLook: n.type === 'shape' || n.type === 'text' ? null : layerLook(n.data.node.tags, layers),
             // On a shared network a tile can only be opened and read: the tools that change it are not offered.
@@ -837,7 +858,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
                 },
           },
         })),
-    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode, readOnly, layers]
+    [rfNodes, matches, shownIds, tileScale, tagColours, tagMode, readOnly, layers, sketchy]
   );
 
   // The middle of every item, to pick the side each arrow leaves and arrives on.
@@ -912,13 +933,14 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
           active: group.some((e) => edgeCard?.id === e.id),
           twoWay: group.some((e) => e.is_bidirectional),
           tagColours,
+          sketchy,
           actions: edgeActions,
         },
         style: { stroke, strokeWidth: width },
         className: 'graph-edge',
       };
     });
-  }, [edges, filter, shownIds, centres, edgeActions, tagColours, tagMode, edgeCard]);
+  }, [edges, filter, shownIds, centres, edgeActions, tagColours, tagMode, edgeCard, sketchy]);
 
   // The link whose style card is open, read from the current list so the card shows saved values.
   const activeEdge = edgeCard ? edges.find((e) => e.id === edgeCard.id) : null;
@@ -1641,6 +1663,9 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
         </button>
         <button className="ghost hide-small" onClick={toggleGrid} aria-pressed={showGrid}>
           Grid: {showGrid ? 'on' : 'off'}
+        </button>
+        <button className="ghost hide-small" onClick={toggleSketchy} aria-pressed={sketchy} title="Draw the lines and outlines like by hand">
+          Sketchy: {sketchy ? 'on' : 'off'}
         </button>
         <button
           className="ghost"

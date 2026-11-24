@@ -9,6 +9,7 @@ import TexText from './TexText.jsx';
 import RichText from './RichText.jsx';
 import { tagColour } from '../tags.js';
 import { readableOn } from '../layers.js';
+import { SKETCH_MIN_ZOOM, seedOf, sketchBox } from '../sketch.js';
 
 /**
  * A saved link on the canvas. The tile's box never depends on the zoom (it is sized by its full content, kept in an
@@ -18,7 +19,9 @@ import { readableOn } from '../layers.js';
  */
 export default function GraphNode({ id, data, selected }) {
   const zoom = useStore((state) => state.transform[2]);
-  const { node, dim, highlight, actions, tagColours, tagMode, readOnly, layerLook } = data;
+  const { node, dim, highlight, actions, tagColours, tagMode, readOnly, layerLook, sketchy } = data;
+  // The sketchy look draws the tile's outline by hand-made strokes, only while the view is close enough for the wobble to show.
+  const sketch = Boolean(sketchy) && zoom >= SKETCH_MIN_ZOOM;
   // Detail grows smoothly with the zoom instead of switching in steps. Under 40% only the title shows. Above that the
   // commentary appears one line at a time (fading in) until 100%, where all of it shows, and the badge and picture fade in.
   const far = zoom < 0.4;
@@ -70,6 +73,7 @@ export default function GraphNode({ id, data, selected }) {
     dim && 'dim',
     highlight && 'highlight',
     shape && shape !== 'rect' && `shape-${shape}`,
+    sketch && 'sketchy',
   ]
     .filter(Boolean)
     .join(' ');
@@ -93,6 +97,20 @@ export default function GraphNode({ id, data, selected }) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // The sketchy look: the tile's outline is drawn by hand-made strokes instead of the plain border. The tile's whole box is
+  // measured for it, and only while it is on and the view is close enough for the wobble to show.
+  const rootRef = useRef(null);
+  const [outer, setOuter] = useState(null);
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!sketch || !el) return undefined;
+    const measure = () => setOuter((prev) => (prev && prev.w === el.offsetWidth && prev.h === el.offsetHeight ? prev : { w: el.offsetWidth, h: el.offsetHeight }));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [sketch]);
 
   // How much the title can be enlarged and still fit inside the tile, found by measuring a hidden copy of the title (words
   // break if they must). It is only needed once the view is zoomed out.
@@ -211,7 +229,14 @@ export default function GraphNode({ id, data, selected }) {
   };
 
   return (
-    <div className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
+    <div ref={rootRef} className={className} style={{ ...appearanceVars(node.style, 'node'), ...tintVars, ...size }}>
+      {sketch && outer && (
+        <svg className="sketch-outline" width={outer.w} height={outer.h} viewBox={`0 0 ${outer.w} ${outer.h}`} aria-hidden="true">
+          {sketchBox(shape || 'rect', outer.w, outer.h, seedOf(id), 1.6).map((d, i) => (
+            <path key={i} d={d} />
+          ))}
+        </svg>
+      )}
       <SideHandles />
 
       <NodeTools
