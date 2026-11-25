@@ -13,6 +13,7 @@ import { asHttpUrl, hostFromUrl } from '../utils.js';
 import GraphNode from './GraphNode.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { STYLES } from '../sketch.js';
+import { tilePaint } from '../tileLook.js';
 import MaximizedTile, { TilePreviewWindow } from './MaximizedTile.jsx';
 import { WikiContext } from './wikilinks.jsx';
 import EdgeCard from './EdgeCard.jsx';
@@ -1973,6 +1974,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
             relations={relationsOf(maximized.id)}
             onOpenTile={(id) => setMaximized({ id })}
             tagColours={tagColours}
+            paintOf={(node) => tilePaint(node, tagColours, tagMode, layers)}
             onEdit={
               readOnly
                 ? undefined
@@ -2025,6 +2027,7 @@ function Board({ networkId, user, onLogout, readOnly, onCopy, embed }) {
           node={wikiPreview.node}
           rect={wikiPreview.rect}
           tagColours={tagColours}
+          paint={tilePaint(wikiPreview.node, tagColours, tagMode, layers)}
           onEnter={() => clearTimeout(wikiTimer.current)}
           onLeave={wiki.hide}
           onClose={() => setWikiPreview(null)}

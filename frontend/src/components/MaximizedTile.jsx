@@ -191,7 +191,7 @@ function RelationList({ relations, show, hide, onOpenTile }) {
  * A tile enlarged to fill the canvas: its content, its external references (hover one to preview it), and its
  * relationships to and from other tiles (hover one to preview that tile; click it to open that tile here instead).
  */
-export default function MaximizedTile({ node, relations, tagColours, onEdit, onClose, onOpenTile }) {
+export default function MaximizedTile({ node, relations, tagColours, paintOf, onEdit, onClose, onOpenTile }) {
   // The one floating preview: { kind: 'link', link } or { kind: 'tile', node }, or null.
   const [preview, setPreview] = useState(null);
   const closing = useRef(null);
@@ -221,8 +221,14 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
   // The ones that go out from this tile come first, then the ones that come in.
   const ordered = [...relations.filter((r) => r.outgoing), ...relations.filter((r) => !r.outgoing)];
 
+  // The expanded tile keeps the tile's own background; a plain tile follows the theme.
+  const paint = paintOf?.(node);
+  // A previewed tile is shown with its own background, not this one's.
+  const previewPaint = preview?.kind === 'tile' ? paintOf?.(preview.node) : null;
+
   return (
     <div className="max-tile">
+      <div className={`max-sheet ${paint?.className ?? ''}`} style={paint?.style}>
       <div className="focus-bar">
         <div className="max-back">
           <button type="button" className="ghost small" onClick={onClose}>
@@ -254,6 +260,7 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
           )}
         </article>
       </div>
+      </div>
 
       {preview && (
         <FloatingPreview
@@ -274,7 +281,7 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
               <ReferencePreview reference={preview.link} />
             </div>
           ) : (
-            <div className="max-preview-body">
+            <div className={`max-preview-body ${previewPaint?.className ?? ''}`} style={previewPaint?.style}>
               <TileBody node={preview.node} tagColours={tagColours} />
             </div>
           )}
@@ -288,7 +295,7 @@ export default function MaximizedTile({ node, relations, tagColours, onEdit, onC
  * The preview of a tile beside an item on the screen (rect is the item's place): used when a [[wiki link]] is hovered. The
  * preview stays while the pointer is on it.
  */
-export function TilePreviewWindow({ node, rect, tagColours, className, onEnter, onLeave, onClose }) {
+export function TilePreviewWindow({ node, rect, tagColours, paint, className, onEnter, onLeave, onClose }) {
   return (
     <FloatingPreview rect={rect} tall={false} contentKey={node.id} className={className} onEnter={onEnter} onLeave={onLeave}>
       <div className="max-preview-bar">
@@ -297,7 +304,7 @@ export function TilePreviewWindow({ node, rect, tagColours, className, onEnter, 
           ×
         </button>
       </div>
-      <div className="max-preview-body">
+      <div className={`max-preview-body ${paint?.className ?? ''}`} style={paint?.style}>
         <TileBody node={node} tagColours={tagColours} />
       </div>
     </FloatingPreview>
